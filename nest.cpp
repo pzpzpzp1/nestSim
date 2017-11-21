@@ -93,7 +93,7 @@ unsigned int polygons[] = //Polygons for a cube (6 squares)
 
 // some constants
 
-#define NUM 100			// max number of objects
+#define NUM 1000			// max number of objects
 #define DENSITY (5.0)		// density of all objects
 #define GPB 3			// maximum number of geometries per body
 #define MAX_CONTACTS 20          // maximum number of contact points per body
@@ -158,17 +158,12 @@ static void nearCallback (void *data, dGeomID o1, dGeomID o2)
     contact[i].surface.soft_cfm = 0.01;
   }
   if (int numc = dCollide (o1,o2,MAX_CONTACTS,&contact[0].geom,
-			   sizeof(dContact))) {
+                           sizeof(dContact))) {
     dMatrix3 RI;
     dRSetIdentity (RI);
     const dReal ss[3] = {0.02,0.02,0.02};
     for (i=0; i<numc; i++) {
-        /*if (numc > maxNumContactsSimulated )
-        {
-            maxNumContactsSimulated = numc;
-            fprintf(fp, "%d\n", maxNumContactsSimulated);
-            // 2 rods can only contact once.
-        }*/
+
 
       dJointID c = dJointCreateContact (world,contactgroup,contact+i);
       dJointAttach (c,b1,b2);
@@ -234,6 +229,48 @@ static void command (int cmd)
   int setBody;
   
   cmd = locase (cmd);
+
+  if (cmd == 'w')
+  {
+
+    dContact contact[MAX_CONTACTS];   // up to MAX_CONTACTS contacts per box-box
+    for (i=0; i<MAX_CONTACTS; i++) {
+      contact[i].surface.mode = dContactBounce | dContactSoftCFM;
+      contact[i].surface.mu = dInfinity;
+      contact[i].surface.mu2 = 0;
+      contact[i].surface.bounce = 0.1;
+      contact[i].surface.bounce_vel = 0.1;
+      contact[i].surface.soft_cfm = 0.01;
+    }
+
+    int totalc = 0;
+    fprintf(fp, "num objs %d\n", num);
+
+    // check all collisions between num x num objects
+    for (i = 0; i < num; i ++){
+      for (j = 0; j < num; j ++){
+        dGeomID g1 = obj[i].geom[0];
+        dGeomID g2 = obj[i].geom[0];
+
+        totalc += dCollide (g1,g2,MAX_CONTACTS,&contact[0].geom,
+                                       sizeof(dContact));
+       if (totalc!=0) fprintf(fp, "totalc %d\n", totalc);
+
+      }
+    }
+    // doublecounting collisions should always be even number
+    assert(totalc%2==0);
+    totalc/=2;
+
+    if (totalc >= maxNumContactsSimulated )
+    {
+        maxNumContactsSimulated = totalc;
+        fprintf(fp, "%d\n", maxNumContactsSimulated);
+    }
+
+  }
+
+
   if (cmd == 'b' || cmd == 's' || cmd == 'c' || cmd == 'x' || cmd == 'y' || cmd == 'v')
   {
     setBody = 0;
@@ -246,7 +283,7 @@ static void command (int cmd)
       nextobj++;
       if (nextobj >= num) nextobj = 0;
 
-      // destroy the body and geoms for slot i
+      // destroy the body and geoms for slot i // this is useful for later. removing objects.
       dBodyDestroy (obj[i].body);
       for (k=0; k < GPB; k++) {
 	if (obj[i].geom[k]) dGeomDestroy (obj[i].geom[k]);
@@ -260,10 +297,18 @@ static void command (int cmd)
     dMatrix3 R;
     if (random_pos) 
       {
+
+        // [-1,1 -1,1 2]
 	dBodySetPosition (obj[i].body,
 			  dRandReal()*2-1,dRandReal()*2-1,dRandReal()+2);
-	dRFromAxisAndAngle (R,dRandReal()*2.0-1.0,dRandReal()*2.0-1.0,
-			    dRandReal()*2.0-1.0,dRandReal()*10.0-5.0);
+
+        // all orientations uniformly
+        float xy_angle = dRandReal() * 2 * M_PI;
+        float h_angle = dRandReal() * 2 * M_PI;
+        float r_angle = dRandReal() * 2 * M_PI;
+
+        dRFromAxisAndAngle (R, sin(xy_angle)*sin(h_angle), cos(xy_angle)*sin(h_angle),
+                            cos(h_angle),r_angle);
       }
     else 
       {
@@ -280,11 +325,11 @@ static void command (int cmd)
     dBodySetRotation (obj[i].body,R);
     dBodySetData (obj[i].body,(void*) i);
 
-    if (cmd == 'b') {
+    /* if (cmd == 'b') {
       dMassSetBox (&m,DENSITY,sides[0],sides[1],sides[2]);
       obj[i].geom[0] = dCreateBox (space,sides[0],sides[1],sides[2]);
     }
-    else if (cmd == 'c') {
+    else */ if (cmd == 'c') {
 
       dMassSetCapsule (&m,DENSITY,3, rad, rad * AR);
       obj[i].geom[0] = dCreateCapsule (space, rad, rad * AR);
@@ -475,6 +520,7 @@ static void command (int cmd)
           if (dBodyIsEnabled(obj[selected].body))
             doFeedback = 1;
   }
+
 }
 
 
