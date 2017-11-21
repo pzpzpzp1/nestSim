@@ -2,7 +2,13 @@
 
 ## TODO
 
-Rewrite Mathematica constraint counting in terms of differences
+### Code
+* Make functions that dump a nice output of contact orientations
+* Make friction dynamically adjustable
+* 
+
+### Other
+* Rewrite Mathematica constraint counting in terms of differences
 
 ## Parameters
 
