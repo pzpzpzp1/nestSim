@@ -20,9 +20,12 @@
  *                                                                       *
  *************************************************************************/
 
+// ./nest -notex -noshadows
+
 #include <ode/ode.h>
 #include <drawstuff/drawstuff.h>
 #include "texturepath.h"
+#include <assert.h>
 
 #ifdef _MSC_VER
 #pragma warning(disable:4244 4305)  // for VC++, no precision loss complaints
@@ -93,7 +96,7 @@ unsigned int polygons[] = //Polygons for a cube (6 squares)
 #define NUM 100			// max number of objects
 #define DENSITY (5.0)		// density of all objects
 #define GPB 3			// maximum number of geometries per body
-#define MAX_CONTACTS 8          // maximum number of contact points per body
+#define MAX_CONTACTS 20          // maximum number of contact points per body
 #define MAX_FEEDBACKNUM 20
 #define GRAVITY         REAL(0.5)
 #define USE_GEOM_OFFSET 1
@@ -113,10 +116,16 @@ static MyObject obj[NUM];
 static dJointGroupID contactgroup;
 static int selected = -1;	// selected object
 static int show_aabb = 0;	// show geom AABBs?
-static int show_contacts = 0;	// show contact points?
+static int show_contacts = 1;	// show contact points?
 static int random_pos = 1;	// drop objects from random position?
 static int write_world = 0;
 static int show_body = 0;
+
+// global variables start now
+int maxNumContactsSimulated = 0;
+FILE * fp;
+float rad = .03;
+int AR = 50;
 
 struct MyFeedback {
   dJointFeedback fb;
@@ -154,6 +163,13 @@ static void nearCallback (void *data, dGeomID o1, dGeomID o2)
     dRSetIdentity (RI);
     const dReal ss[3] = {0.02,0.02,0.02};
     for (i=0; i<numc; i++) {
+        /*if (numc > maxNumContactsSimulated )
+        {
+            maxNumContactsSimulated = numc;
+            fprintf(fp, "%d\n", maxNumContactsSimulated);
+            // 2 rods can only contact once.
+        }*/
+
       dJointID c = dJointCreateContact (world,contactgroup,contact+i);
       dJointAttach (c,b1,b2);
       if (show_contacts) dsDrawBox (contact[i].geom.pos,RI,ss);
@@ -269,9 +285,9 @@ static void command (int cmd)
       obj[i].geom[0] = dCreateBox (space,sides[0],sides[1],sides[2]);
     }
     else if (cmd == 'c') {
-      sides[0] *= 0.5;
-      dMassSetCapsule (&m,DENSITY,3,sides[0],sides[1]);
-      obj[i].geom[0] = dCreateCapsule (space,sides[0],sides[1]);
+
+      dMassSetCapsule (&m,DENSITY,3, rad, rad * AR);
+      obj[i].geom[0] = dCreateCapsule (space, rad, rad * AR);
     }
     //<---- Convex Object    
     else if (cmd == 'v') 
@@ -615,6 +631,11 @@ static void simLoop (int pause)
 
 int main (int argc, char **argv)
 {
+  // init global vars
+  maxNumContactsSimulated = 0;
+  fp = fopen("output.txt","w");
+  AR = 50;
+
   // setup pointers to drawstuff callback functions
   dsFunctions fn;
   fn.version = DS_VERSION;

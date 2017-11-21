@@ -76,7 +76,7 @@ nest.o: nest.cpp /usr/include/stdc-predef.h \
  /home/pzpzpzp1/Desktop/ode-0.13/include/ode/odecpp_collision.h \
  /home/pzpzpzp1/Desktop/ode-0.13/include/drawstuff/drawstuff.h \
  /home/pzpzpzp1/Desktop/ode-0.13/include/drawstuff/version.h \
- texturepath.h \
+ texturepath.h /usr/include/assert.h \
  /home/pzpzpzp1/Desktop/ode-0.13/ode/demo/icosahedron_geom.h
 
 /usr/include/stdc-predef.h:
@@ -258,5 +258,7 @@ nest.o: nest.cpp /usr/include/stdc-predef.h \
 /home/pzpzpzp1/Desktop/ode-0.13/include/drawstuff/version.h:
 
 texturepath.h:
+
+/usr/include/assert.h:
 
 /home/pzpzpzp1/Desktop/ode-0.13/ode/demo/icosahedron_geom.h:

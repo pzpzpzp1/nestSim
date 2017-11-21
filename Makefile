@@ -6,5 +6,7 @@ all:
 	/bin/bash $(ODEPath)/libtool  --tag=CXX   --mode=link g++  -g -O2     -o nest nest.o $(ODEPath)/drawstuff/src/libdrawstuff.la $(ODEPath)/ode/src/libode.la -lGLU -lGL  -lm  -lpthread
 	$(ODEPath)/libtool: link: g++ -g -O2 -o nest nest.o  $(ODEPath)/drawstuff/src/.libs/libdrawstuff.a -lX11 $(ODEPath)/ode/src/.libs/libode.a -lGLU -lGL -lm -lpthread
 
+start: ./nest -notex -noshadow
+
 clean:
 	rm nest
