@@ -200,8 +200,10 @@ static void start()
   printf ("To toggle dropping from random position/orientation, press r.\n");
   printf ("To save the current state to 'state.dif', press 1.\n");
   printf ("To show joint feedbacks of selected object, press f.\n\n");
+
   printf ("To show/save total number of contacts, press w.\n");
   printf ("To show/save number of contacts for the selected object, press q.\n");
+  printf ("To toggle immobility of current objects, press k.\n\n");
 }
 
 
@@ -339,6 +341,24 @@ static void command (int cmd)
       }
 
     dBodySetMass (obj[i].body,&m);
+
+    // Make immovable (infinite mass)
+    // dBodySetKinematic(obj[i].body);
+  }
+
+  if (cmd == 'k') {
+    if (dBodyIsKinematic(obj[0].body) == 0) {
+      for (j = 0; j < num; j++) {
+        dBodySetKinematic(obj[j].body);
+        dBodySetLinearVel(obj[j].body, 0, 0, 0);
+        dBodySetAngularVel(obj[j].body, 0, 0, 0);
+      }
+    }
+    else {
+      for (j = 0; j < num; j++) {
+        dBodySetDynamic(obj[j].body);
+      }
+    }
   }
 
   if (cmd == ' ') {
