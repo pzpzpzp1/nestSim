@@ -593,6 +593,9 @@ int main (int argc, char **argv)
   // dWorldSetStepIslandsProcessingMaxThreadCount(world, 1);
   dWorldSetStepThreadingImplementation(world, dThreadingImplementationGetFunctions(threading), threading);
 
+  // draw bounding box
+  // ...
+
   // run simulation
   dsSimulationLoop (argc,argv,800,600,&fn);
 
