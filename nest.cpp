@@ -40,12 +40,119 @@ bool orderbyfloat2(float *a, float * b)
 {
     return a[0] < b[0];
 }
+bool orderbyfloat(float a, float b)
+{
+    return a < b;
+}
 
+// returns true if front has intersecting range with back.
+bool hasIntersectingFreeAngles(std::vector< std::pair<float, float> > front, std::vector< std::pair<float, float> > back){
+    //for(int i)
+    // todo: calculate intersection between ranges.
 
+}
+
+// takes ranges, returns ranges with the flipped versions
+std::vector< std::pair<float, float> > Suspend(std::vector< std::pair<float, float> > ranges)
+{
+    std::vector< std::pair<float, float> > res; res.clear();
+    for(int i=0;i<ranges.size();i++){
+        std::pair<float,float> thets = ranges.at(i);
+        assert(thets.first <= thets.second);
+
+        // for each range, duplicate the flipped range as well.
+        res.push_back(thets);
+        res.push_back(std::pair<float,float>(thets.first + M_PI, thets.second + M_PI));
+    }
+
+    return res;
+}
+
+// make sure no values are more than 2pi while maintaining the range meaning.
+std::vector< std::pair<float, float> > processRanges(std::vector< std::pair<float, float> > ranges){
+    std::vector< std::pair<float, float> > res; res.clear();
+    for(int i=0;i<ranges.size();i++){
+        std::pair<float,float> thets = ranges.at(i);
+        assert(thets.first <= thets.second);
+
+        while(thets.first > 2*M_PI){
+            thets.first -= 2*M_PI;
+            thets.second -= 2*M_PI;
+        }
+
+        if(thets.second <= 2*M_PI)
+        {
+            res.push_back(thets);
+        }
+        else
+        {
+            // if the range is so large it encompasses all of s1, then just one range is enough.
+            if(thets.second >= 4*M_PI){
+                res.push_back(std::pair<float,float>(0, 2*M_PI - .00001));
+                return res;
+            }
+            // split range into two peices.
+            res.push_back(std::pair<float,float>(thets.first, 2*M_PI-.00001));
+            res.push_back(std::pair<float,float>(0, thets.second-2*M_PI));
+        }
+    }
+    return res;
+}
+
+// given a set of angles, find if there are any angles in 0 to 2pi where the rod can move. Represented as
+// the union of the ranges in the returned vector. ranges are represented as pairs where the latter is more than the former.
 std::vector< std::pair<float, float> > getFreeAngles(float theta[], int num_contacts, int p, bool front)
 {
     //todo: implement
     std::vector< std::pair<float, float> > res; res.clear();
+
+    int startind = 0; int endind = num_contacts-1;
+    if(front)
+    {
+        endind = p;
+    }
+    else
+    {
+        startind = p+1;
+    }
+    if(startind > endind){
+        // 0-2pi is all free.
+        res.push_back(std::pair<float, float>(.00001,2*M_PI-.00001));
+        return res;
+    }
+
+    // order the thetas of this bunch.
+    std::vector<float> fthetas; fthetas.clear();
+    for(int i = startind; i<=endind; i++)
+    {
+        fthetas.push_back(theta[i]);
+    }
+    assert(fthetas.size()!=0); // this can't happen because of earlier index check
+    if(fthetas.size()==1){
+        res.push_back(std::pair<float, float>(fthetas[0]+M_PI/2.0 , fthetas[0]+M_PI*3.0/2.0));
+        return res;
+    }
+    std::sort(fthetas.begin(), fthetas.end(), orderbyfloat);
+    assert(fthetas.size()<2 || fthetas[0] < fthetas[1]); // to check the sort went the right order.
+
+    // look for gaps of more than pi in this bunch. implies free angle
+    for(int i = 0; i < fthetas.size(); i++)
+    {
+        float tnext = fthetas[(i+1)%fthetas.size()];
+        float tcurr = fthetas[i];
+        float dt = tnext - tcurr;
+        dt += (dt < 0 ? 2*M_PI : 0); // this should only happen once. at the last iteration of the loop.
+        if(dt > M_PI)
+        {
+            float da = dt - M_PI; // size of free angle
+            float la = tnext + M_PI/2.0;
+            float ra = la + da;
+            res.push_back(std::pair<float,float>(la,ra));
+            return res; // dt can only be more than pi once.
+        }
+    }
+
+    // res is empty. no free angles.
     return res;
 }
 
@@ -338,11 +445,17 @@ bool CheckStable(int rodInd){
     for (int p = 0; p < num_contacts; p++)
     {
         // p is a pivot. splits the contacts to [0:p] and [p+1:end]
-        std::vector<std::pair<float, float> > front = getFreeAngles(theta, num_contacts, p, true);
-        std::vector<std::pair<float, float> > back = getFreeAngles(theta, num_contacts, p, false);
+        std::vector<std::pair<float, float> > front = processRanges(Suspend(getFreeAngles(theta, num_contacts, p, true)));
+        std::vector<std::pair<float, float> > back = processRanges(Suspend(getFreeAngles(theta, num_contacts, p, false)));
 
-        // todo: get intersecting free angles
+        // get intersecting free angles
+        bool hasIFA = hasIntersectingFreeAngles(front, back);
+        if(hasIFA){
+            return false;
+        }
     }
+    // no pivot revealed intersecting free angles. therefore stable
+    return true;
 }
 
 
