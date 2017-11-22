@@ -96,7 +96,7 @@ unsigned int polygons[] = //Polygons for a cube (6 squares)
 #define NUM 1000			// max number of objects
 #define DENSITY (5.0)		// density of all objects
 #define GPB 3			// maximum number of geometries per body
-#define MAX_CONTACTS 20          // maximum number of contact points per body
+#define MAX_CONTACTS 8          // maximum number of contact points per body
 #define MAX_FEEDBACKNUM 20
 #define GRAVITY         REAL(0.5)
 #define USE_GEOM_OFFSET 1
@@ -142,6 +142,27 @@ static void nearCallback (void *data, dGeomID o1, dGeomID o2)
 {
   int i;
   // if (o1->body && o2->body) return;
+
+  // this part confirms that position is in the center of the rod
+  // todo: confirm that R is the appropriate rotation.
+  /*
+  int interestedInd = selected > -1 ? selected : 0;
+  dVector3 pos;
+  dMatrix3 R;
+  float halflen = AR*rad/2;
+  dBodyCopyPosition(obj[interestedInd].body, pos);
+  dBodyCopyRotation(obj[interestedInd].body, R);
+  dMatrix3 RI2; dRSetIdentity (RI2); const dReal ss2[3] = {0.1,0.1,0.1};
+  dsDrawBox (pos,RI2,ss2);
+
+  dVector3 point; point[0]=0; point[1]=0; point[2] = halflen; //halflen ;
+  dVector3 out;
+  dMultiply0_331 (out,R,point);
+  out[0]+=pos[0];
+  out[1]+=pos[1];
+  out[2]+=pos[2];
+  dsDrawBox (out,RI2,ss2);
+  */
 
   // exit without doing anything if the two bodies are connected by a joint
   dBodyID b1 = dGeomGetBody(o1);
@@ -213,7 +234,40 @@ char locase (char c)
   else return c;
 }
 
+bool CheckStable(int rodInd){
+    // get contacts
+    dContact contact_array[num];
+    float contactPos[num][3];
+    int num_contacts = 0;
+    dGeomID g0 = obj[rodInd].geom[0];
+    for (int j = 0; j < num; j++) {
+      dGeomID g1 = obj[j].geom[0];
+      int numc = dCollide(g0, g1, MAX_CONTACTS, &contact_array[0].geom, sizeof(dContact));
+      //assert(numc < 2); // technically 2 cylinders can only collide in one location. but numerical error sometimes reports two. in which case we'll only take the first collision.
+      if (numc > 0) {
+          contactPos[num_contacts][0] = contact_array[0].geom.pos[0];
+          contactPos[num_contacts][1] = contact_array[0].geom.pos[1];
+          contactPos[num_contacts][2] = contact_array[0].geom.pos[2];
 
+          num_contacts++;
+      }
+    }
+
+
+    dVector3 pos;
+    dMatrix3 R;
+    dBodyCopyPosition(obj[rodInd].body, pos);
+    dBodyCopyRotation(obj[rodInd].body, R);
+
+    fprintf(fp, "cyl position: %f %f %f\n", pos[0], pos[1], pos[2]);
+    fprintf(fp, "cyl R: %f %f %f %f %f %f %f %f %f\n", R[0],R[1],R[2],R[3],R[4],R[5],R[6],R[7],R[8]);
+    for(int i =0; i < num_contacts; i++){
+        fprintf(fp, "contact %d: %f %f %f\n",i, contactPos[i][0], contactPos[i][1], contactPos[i][2]);
+    }
+
+
+    if(num_contacts <= 3) { return false; }
+}
 // called when a key pressed
 
 static void command (int cmd)
@@ -246,7 +300,7 @@ static void command (int cmd)
     for (i = 0; i < num; i ++){
       for (j = 0; j < num; j ++){
         dGeomID g1 = obj[i].geom[0];
-        dGeomID g2 = obj[j].geom[0]; // i->j
+        dGeomID g2 = obj[j].geom[0];
 
         totalc += dCollide (g1,g2,MAX_CONTACTS,&contact[0].geom,
                             sizeof(dContact));
@@ -259,8 +313,9 @@ static void command (int cmd)
     if (totalc >= maxNumContactsSimulated )
     {
       maxNumContactsSimulated = totalc;
-      fprintf(fp, "%d\n\n", maxNumContactsSimulated);
+      fprintf(fp, "numContacts %d maxcontacts %d \n\n", totalc, maxNumContactsSimulated);
     }
+
   }
 
   // Check collisions for selected object
@@ -269,7 +324,12 @@ static void command (int cmd)
       fprintf(fp, "selected object: %d\n", selected);
 
       // print object info (position, orientation, etc.)
-      // ...
+      dVector3 pos;
+      dMatrix3 R;
+      dBodyCopyPosition(obj[selected].body, pos);
+      dBodyCopyRotation(obj[selected].body, R);
+      fprintf(fp, "position: %f %f %f\n", pos[0], pos[1], pos[2]);
+      fprintf(fp, "R: %f %f %f %f %f %f %f %f %f\n", R[0],R[1],R[2],R[3],R[4],R[5],R[6],R[7],R[8]);
 
       // get contacts
       dContact contact_array[num];
@@ -284,6 +344,14 @@ static void command (int cmd)
 
       fprintf(fp, "num contacts: %d\n\n", num_contacts);
     }
+  }
+  // Find if selected rod is stable or not.
+  else if(cmd == 'v')
+  {
+      if (selected >=0) {
+        bool isStable = CheckStable(selected);
+        fprintf(fp, "selected object: %d stability:%d\n", selected, isStable);
+      }
   }
 
   // Drop a capsule (spherocylinder)
