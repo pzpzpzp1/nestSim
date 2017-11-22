@@ -45,11 +45,22 @@ bool orderbyfloat(float a, float b)
     return a < b;
 }
 
-// returns true if front has intersecting range with back.
+// returns true if front has intersecting range with back. assumes ranges have been processed.
 bool hasIntersectingFreeAngles(std::vector< std::pair<float, float> > front, std::vector< std::pair<float, float> > back){
-    //for(int i)
-    // todo: calculate intersection between ranges.
+    for(int i=0; i<front.size(); i++){
+        for(int j=0; i<back.size(); j++){
+            std::pair<float,float> p1 = front[i];
+            std::pair<float,float> p2 = back[j];
 
+            float l = std::max(p1.first, p2.first);
+            float r = std::min(p1.second, p2.second);
+            if(l < r)
+            {
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 // takes ranges, returns ranges with the flipped versions
@@ -358,7 +369,7 @@ char locase (char c)
 }
 
 bool CheckStable(int rodInd){
-    fprintf(fp, "\nChecking stability of rod %d\n", rodInd);
+    //fprintf(fp, "\nChecking stability of rod %d\n", rodInd);
 
     // get contacts
     dContact contact_array[num];
@@ -421,16 +432,19 @@ bool CheckStable(int rodInd){
         // calculate l and theta relative to y axis
         float * lthet = (float *)malloc(sizeof(float)*2);
         lthet[0] = rotCont[2];
-        lthet[1] = atan2(rotCont[1], rotCont[0]);
+        // float angle =
+        // while(angle < 0) {angle += 2*M_PI;} angle = fmod(angle, 2*M_PI);
+        lthet[1] = atan2(rotCont[1], rotCont[0]); //angle;
         ltheta.push_back(lthet);
     }
     std::sort(ltheta.begin(), ltheta.end(), orderbyfloat2);
     fprintf(fp,"--- thetabegin\n");
     for(int i = 0; i < num_contacts; i++){
+        // recenter angles and assert necessary conditions
         theta[i] = (ltheta.at(i))[1] - (ltheta.at(0))[1];
-        if(theta[i]<0){theta[i]+=4*M_PI;}
-        assert(theta[i]>0); // we could only have removed one 2pi so at worst it could be -2pi. so adding 4pi should always leave it positive.
-        theta[i] = fmod(theta[i], 2*M_PI);
+        while(theta[i] < 0) {theta[i] += 8*M_PI;} theta[i] = fmod(theta[i], 2*M_PI);
+        assert(theta[i] == theta[i]); // catch any nans. they pollute the batch.
+        assert(theta[i] >= 0);
         fprintf(fp,"theta: %f ", theta[i]);
     } fprintf(fp,"\n--- thetaend\n");
 
@@ -537,13 +551,20 @@ static void command (int cmd)
       fprintf(fp, "num contacts: %d\n\n", num_contacts);
     }
   }
-  // Find if selected rod is stable or not.
+  // Find if any rod is stable or not.
   else if(cmd == 'v')
   {
-      if (selected >=0) {
+      for(int i =0; i < num; i++){
+          bool isStable = CheckStable(i);
+          if(isStable){
+              fprintf(fp,"STABLE ROD found! %d", i);
+          }
+      }
+
+      /*if (selected >=0) {
         bool isStable = CheckStable(selected);
         fprintf(fp, "selected object: %d stability:%d\n", selected, isStable);
-      }
+      }*/
   }
 
   // Drop a capsule (spherocylinder)
