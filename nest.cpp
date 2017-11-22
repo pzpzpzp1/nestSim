@@ -26,12 +26,28 @@
 #include <drawstuff/drawstuff.h>
 #include "texturepath.h"
 #include <assert.h>
+#include <vector>
+#include <algorithm>
+//#include <Eigen/Dense>
 
 #ifdef _MSC_VER
 #pragma warning(disable:4244 4305)  // for VC++, no precision loss complaints
 #endif
 
 #include "icosahedron_geom.h"
+
+bool orderbyfloat2(float *a, float * b)
+{
+    return a[0] < b[0];
+}
+
+
+std::vector< std::pair<float, float> > getFreeAngles(float theta[], int num_contacts, int p, bool front)
+{
+    //todo: implement
+    std::vector< std::pair<float, float> > res; res.clear();
+    return res;
+}
 
 
 //<---- Convex Object
@@ -144,7 +160,7 @@ static void nearCallback (void *data, dGeomID o1, dGeomID o2)
   // if (o1->body && o2->body) return;
 
   // this part confirms that position is in the center of the rod
-  // todo: confirm that R is the appropriate rotation.
+
   /*
   int interestedInd = selected > -1 ? selected : 0;
   dVector3 pos;
@@ -162,7 +178,7 @@ static void nearCallback (void *data, dGeomID o1, dGeomID o2)
   out[1]+=pos[1];
   out[2]+=pos[2];
   dsDrawBox (out,RI2,ss2);
-  */
+    */
 
   // exit without doing anything if the two bodies are connected by a joint
   dBodyID b1 = dGeomGetBody(o1);
@@ -235,6 +251,8 @@ char locase (char c)
 }
 
 bool CheckStable(int rodInd){
+    fprintf(fp, "\nChecking stability of rod %d\n", rodInd);
+
     // get contacts
     dContact contact_array[num];
     float contactPos[num][3];
@@ -252,12 +270,21 @@ bool CheckStable(int rodInd){
           num_contacts++;
       }
     }
+    // <= 3 contacts is always unstable.
+    if(num_contacts <= 3) { return false; }
 
 
     dVector3 pos;
-    dMatrix3 R;
+    dMatrix3 R, Rt;
     dBodyCopyPosition(obj[rodInd].body, pos);
     dBodyCopyRotation(obj[rodInd].body, R);
+    // Rt is R transpose which is also the inverse of R
+    Rt[1]=R[4];
+    Rt[2]=R[8];
+    Rt[6]=R[9];
+    Rt[4]=R[1];
+    Rt[8]=R[2];
+    Rt[9]=R[6];
 
     fprintf(fp, "cyl position: %f %f %f\n", pos[0], pos[1], pos[2]);
     fprintf(fp, "cyl R: %f %f %f %f %f %f %f %f %f\n", R[0],R[1],R[2],R[3],R[4],R[5],R[6],R[7],R[8]);
@@ -265,11 +292,63 @@ bool CheckStable(int rodInd){
         fprintf(fp, "contact %d: %f %f %f\n",i, contactPos[i][0], contactPos[i][1], contactPos[i][2]);
     }
 
+    // Get the start and end location of the rod in R3.
+    dVector3 point; point[0]=0; point[1]=0; point[2] = AR*rad/2; //half length
+    dVector3 out; dMultiply0_331 (out,R,point);
+    dVector3 start, end;
+    start[0]=pos[0]+out[0]; start[1]=pos[1]+out[2]; start[2]=pos[2]+out[2];
+    end[0]=pos[0]-out[0]; end[1]=pos[1]-out[1]; end[2]=pos[2]-out[2];
 
-    if(num_contacts <= 3) { return false; }
+    // parametrize contact locations by l and theta, dist from start, and angle relative to y axis.
+    std::vector<float*> ltheta; ltheta.clear();
+    float theta[num_contacts];
+    for(int i = 0; i < num_contacts; i++){
+        // recenter
+        contactPos[i][0]-=start[0];
+        contactPos[i][1]-=start[1];
+        contactPos[i][2]-=start[2];
+        // reorient
+        dVector3 rotCont;
+        dMultiply0_331(rotCont, Rt, contactPos[i]);
+
+        // calculate l and theta relative to y axis
+        float * lthet = (float *)malloc(sizeof(float)*2);
+        lthet[0] = rotCont[2];
+        lthet[1] = atan2(rotCont[1], rotCont[0]);
+        ltheta.push_back(lthet);
+    }
+    std::sort(ltheta.begin(), ltheta.end(), orderbyfloat2);
+    fprintf(fp,"--- thetabegin\n");
+    for(int i = 0; i < num_contacts; i++){
+        theta[i] = (ltheta.at(i))[1] - (ltheta.at(0))[1];
+        if(theta[i]<0){theta[i]+=4*M_PI;}
+        assert(theta[i]>0); // we could only have removed one 2pi so at worst it could be -2pi. so adding 4pi should always leave it positive.
+        theta[i] = fmod(theta[i], 2*M_PI);
+        fprintf(fp,"theta: %f ", theta[i]);
+    } fprintf(fp,"\n--- thetaend\n");
+
+    // calculate stability
+    for (int i = 0; i < num_contacts; i++)
+    {
+        free(ltheta.at(i)); // free unused memory.
+        float dt = theta[(i+1)%num_contacts]-theta[i];
+        if(abs(dt) > M_PI){ return false; } // a angle difference anywhere of more than pi means the rod can move in that dir.
+    }
+
+    for (int p = 0; p < num_contacts; p++)
+    {
+        // p is a pivot. splits the contacts to [0:p] and [p+1:end]
+        std::vector<std::pair<float, float> > front = getFreeAngles(theta, num_contacts, p, true);
+        std::vector<std::pair<float, float> > back = getFreeAngles(theta, num_contacts, p, false);
+
+        // todo: get intersecting free angles
+    }
 }
-// called when a key pressed
 
+
+
+
+// called when a key pressed
 static void command (int cmd)
 {
   size_t i;
