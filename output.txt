@@ -1,9 +1,0 @@
-num objs 9
-2
-
-selected object: 2
-num contacts: 1
-
-selected object: 4
-num contacts: 1
-
