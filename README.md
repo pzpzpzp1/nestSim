@@ -5,7 +5,6 @@
 ### Code
 * Make functions that dump a nice output of contact orientations
 * Make friction dynamically adjustable
-* 
 
 ### Other
 * Rewrite Mathematica constraint counting in terms of differences
@@ -46,11 +45,15 @@ For a given cylindrical rod with contacts distributed (uniformly) randomly along
 
 ## Code
 
-* Corey O'Hern's code
-* Maha's shoestring code
-* [Project Chrono](http://api.projectchrono.org/tutorial_demo_bricks.html)
-* [Open Dynamics Engine (ODE)](https://www.ode-wiki.org/wiki/)
-    * [Demura](http://demura.net/english) (ODE demos/tutorials)
+### Stability checking
+
+```
+bool CheckStable(int rodInd)
+```
+
+### Notes
+
+* `fmod` does not work as expected; use `fmodulo` instead.
 
 ## Miscellaneous
 
@@ -58,6 +61,11 @@ For a given cylindrical rod with contacts distributed (uniformly) randomly along
 * String case
 
 ## Other
+
+* Shoestring code
+* [Project Chrono](http://api.projectchrono.org/tutorial_demo_bricks.html)
+* [Open Dynamics Engine (ODE)](https://www.ode-wiki.org/wiki/)
+* [Demura](http://demura.net/english) (ODE demos/tutorials)
 
 * [Corey O'Hern](http://jamming.research.yale.edu/)
 * Microtubule networks (formed w/ crosslinks)

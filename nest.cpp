@@ -38,23 +38,31 @@
 
 #include "icosahedron_geom.h"
 
+float fmodulo(float a, float b) {
+    return a - b * floor(a / b);
+}
+
 bool orderbyfloat2(float *a, float * b)
 {
     return a[0] < b[0];
 }
+
 bool orderbyfloat(float a, float b)
 {
     return a < b;
 }
 
+// Sort vec1 by the contents of vec2.
 template <class T>
 std::vector<T> sortVectorBy(const std::vector<T> vec1,
                             const std::vector<T> vec2) {
+    assert(vec1.size() == vec2.size());
+
     std::vector<T> result;
     std::vector< std::vector<T> > pairs;
 
     struct comparator {
-        bool operator()(const std::vector<T> &pair1,
+        static bool compare(const std::vector<T> &pair1,
                         const std::vector<T> &pair2) {
             return pair1[1] < pair2[1];
         }
@@ -67,7 +75,7 @@ std::vector<T> sortVectorBy(const std::vector<T> vec1,
         pairs.push_back(pair);
     }
 
-    std::sort(pairs.begin(), pairs.end(), comparator());
+    std::sort(pairs.begin(), pairs.end(), comparator::compare);
 
     for (int i = 0; i < vec2.size(); i++) {
         result.push_back(pairs[i][0]);
@@ -146,16 +154,19 @@ std::vector< std::pair<float, float> > processRanges(std::vector< std::pair<floa
 std::vector< std::pair<float, float> > getFreeAngles(float theta[], int num_contacts, int p, bool front)
 {
     //todo: implement
-    std::vector< std::pair<float, float> > res; res.clear();
+    std::vector< std::pair<float, float> > res;
+    res.clear();
 
-    int startind = 0; int endind = num_contacts-1;
+    int startind = 0;
+    int endind = num_contacts - 1;
+
     if(front)
     {
         endind = p;
     }
     else
     {
-        startind = p+1;
+        startind = p + 1;
     }
     if(startind > endind){
         // 0-2pi is all free.
@@ -165,17 +176,19 @@ std::vector< std::pair<float, float> > getFreeAngles(float theta[], int num_cont
 
     // order the thetas of this bunch.
     std::vector<float> fthetas; fthetas.clear();
-    for(int i = startind; i<=endind; i++)
+    for (int i = startind; i <= endind; i++)
     {
         fthetas.push_back(theta[i]);
     }
-    assert(fthetas.size()!=0); // this can't happen because of earlier index check
-    if(fthetas.size()==1){
-        res.push_back(std::pair<float, float>(fthetas[0]+M_PI/2.0 , fthetas[0]+M_PI*3.0/2.0));
+    assert(fthetas.size() != 0); // this can't happen because of earlier index check
+    if (fthetas.size() == 1) {
+        res.push_back(std::pair<float, float>
+                      (fthetas[0] + M_PI / 2.0,
+                       fthetas[0] + M_PI * 3.0/2.0));
         return res;
     }
     std::sort(fthetas.begin(), fthetas.end(), orderbyfloat);
-    assert(fthetas.size()<2 || fthetas[0] < fthetas[1]); // to check the sort went the right order.
+    assert(fthetas.size() < 2 || fthetas[0] < fthetas[1]); // to check the sort went the right order.
 
     // look for gaps of more than pi in this bunch. implies free angle
     for(int i = 0; i < fthetas.size(); i++)
@@ -452,7 +465,7 @@ bool drop(void) {
       for (k=0; k < GPB; k++) {
         if (obj[i].geom[k]) dGeomDestroy (obj[i].geom[k]);
       }
-      memset (&obj[i],0,sizeof(obj[i]));
+      memset (&obj[i], 0, sizeof(obj[i]));
     }
 
     obj[i].body = dBodyCreate (world);
@@ -460,7 +473,7 @@ bool drop(void) {
 
     dMatrix3 R;
 
-    // drops capsules from positions within [-1..1, -1..1, 0..2]
+    // drops capsules from positions within [-1..1, -1..1, 2..3]
     dBodySetPosition (obj[i].body,
                       dRandReal()*2-1,dRandReal()*2-1,dRandReal()+2);
 
@@ -564,7 +577,7 @@ bool CheckStable(int rodInd) {
 
         // fmod doesn't work here:
         angle = angle - 2 * M_PI * floor(angle / (2 * M_PI));
-        assert(angle >= 0);// && angle < 2 * M_PI);
+        assert(angle >= 0 && angle < 2 * M_PI);
 
         angles.push_back(angle);
         z_order.push_back(contactPos2[i][2]);
@@ -629,7 +642,7 @@ bool CheckStable(int rodInd) {
     } */
 
     for (int i = 0; i < num_contacts; i++) {
-        float dt = angles[(i+1) % num_contacts] - angles[i];
+        float dt = angles[(i + 1) % num_contacts] - angles[i];
         if (std::abs(dt) > M_PI) {
             fprintf(fp, "\topen hemispheres found.\n");
             return false;
@@ -706,12 +719,11 @@ static void command (int cmd)
       maxNumContactsSimulated = totalc;
       fprintf(fp, "numContacts %d   maxcontacts %d \n\n", totalc, maxNumContactsSimulated);
     }
-
   }
 
   // Check collisions for selected object
   if (cmd == 'q') {
-    if (selected >=0) {
+    if (selected >= 0) {
       fprintf(fp, "\tselected object: %d\n", selected);
 
       // print object info (position, orientation, etc.)
@@ -736,7 +748,7 @@ static void command (int cmd)
       fprintf(fp, "num contacts: %d\n\n", num_contacts);
     }
   }
-  // Find if any rod is stable or not.
+  // Find if any rod is stable.
   else if(cmd == 'v')
   {
       for(int i = 0; i < num; i++){
