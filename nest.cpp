@@ -354,9 +354,9 @@ static void start()
   printf ("To dump transformation data for the selected object, press p.\n");
   printf ("To toggle showing the geom AABBs, press a.\n");
   printf ("To toggle showing the contact points, press t.\n");
-  printf ("To toggle dropping from random position/orientation, press r.\n");
   printf ("To save the current state to 'state.dif', press 1.\n");
-  printf ("To show joint feedbacks of selected object, press f.\n\n");
+  printf ("To show joint feedbacks of selected object, press f.\n");
+  printf ("To get the position/rotation of the selected object, press p.\n\n");
 
   printf ("To show/save total number of contacts, press w.\n");
   printf ("To show/save number of contacts for the selected object, press q.\n");
@@ -373,7 +373,7 @@ char locase (char c)
 }
 
 bool CheckStable(int rodInd){
-    fprintf(fp, "\nChecking stability of rod %d\n", rodInd);
+    fprintf(fp, "Checking stability of rod %d\n", rodInd);
 
     // get contacts
     dContact contact_array[num];
@@ -393,20 +393,23 @@ bool CheckStable(int rodInd){
       }
     }
     // <= 3 contacts is always unstable.
-    if(num_contacts <= 3) { return false; }
-
+    if (num_contacts <= 3) { return false; }
 
     dVector3 pos;
     dMatrix3 R, Rt;
     dBodyCopyPosition(obj[rodInd].body, pos);
     dBodyCopyRotation(obj[rodInd].body, R);
+
     // Rt is R transpose which is also the inverse of R
-    Rt[1]=R[4];
-    Rt[2]=R[8];
-    Rt[6]=R[9];
-    Rt[4]=R[1];
-    Rt[8]=R[2];
-    Rt[9]=R[6];
+    Rt[0]  = R[0];
+    Rt[5]  = R[5];
+    Rt[10] = R[10];
+    Rt[1]  = R[4];
+    Rt[2]  = R[8];
+    Rt[6]  = R[9];
+    Rt[4]  = R[1];
+    Rt[8]  = R[2];
+    Rt[9]  = R[6];
 
     fprintf(fp, "cyl position: %f %f %f\n", pos[0], pos[1], pos[2]);
     fprintf(fp, "cyl R: %f %f %f %f %f %f %f %f %f\n", R[0],R[1],R[2],R[3],R[4],R[5],R[6],R[7],R[8]);
@@ -490,6 +493,11 @@ static void command (int cmd)
 
   cmd = locase (cmd);
 
+  // utility function
+  if (cmd == 'z' && selected >= 0) {
+      return;
+  }
+
   // /***/ check all collisions
   if (cmd == 'w')
   {
@@ -561,7 +569,7 @@ static void command (int cmd)
       for(int i = 0; i < num; i++){
           bool isStable = CheckStable(i);
           if(isStable){
-              fprintf(fp,"*************STABLE ROD found! %d ***********", i);
+              fprintf(fp,"************* STABLE ROD found! %d ***********", i);
           }
       }
 
@@ -616,7 +624,8 @@ static void command (int cmd)
                           cos(h_angle),r_angle);
     }
 
-    dBodySetRotation (obj[i].body,R);
+    dBodySetRotation (obj[i].body, R);
+
     dBodySetData (obj[i].body,(void*) i);
 
     if (cmd == 'c') {
@@ -653,7 +662,7 @@ static void command (int cmd)
     if (selected >= num) selected = 0;
     if (selected < 0) selected = 0;
   }
-  else if (cmd == 'u') { /***/ // unselect body
+  else if (cmd == 'u') {
     selected = -1;
   }
   else if (cmd == 'a') {
@@ -662,13 +671,10 @@ static void command (int cmd)
   else if (cmd == 't') {
     show_contacts ^= 1;
   }
-  else if (cmd == 'r') {
-    random_pos ^= 1;
-  }
   else if (cmd == '1') {
     write_world = 1;
   }
-  else if (cmd == 'p'&& selected >= 0)
+  else if (cmd == 'p' && selected >= 0)
   {
     const dReal* pos = dGeomGetPosition(obj[selected].geom[0]);
     const dReal* rot = dGeomGetRotation(obj[selected].geom[0]);
@@ -702,51 +708,12 @@ void drawGeom (dGeomID g, const dReal *pos, const dReal *R, int show_aabb)
     dGeomBoxGetLengths (g,sides);
     dsDrawBox (pos,R,sides);
   }
-  else if (type == dSphereClass) {
-    dsDrawSphere (pos,R,dGeomSphereGetRadius (g));
-  }
   else if (type == dCapsuleClass) {
     dReal radius,length;
     dGeomCapsuleGetParams (g,&radius,&length);
     dsDrawCapsule (pos,R,length,radius);
   }
-//  //<---- Convex Object
-//  else if (type == dConvexClass)
-//  {
-//#if 0
-//    dsDrawConvex(pos,R,planes,
-//                 planecount,
-//                 points,
-//                 pointcount,
-//                 polygons);
-//#else
-//    dsDrawConvex(pos,R,
-//                 Sphere_planes,
-//                 Sphere_planecount,
-//                 Sphere_points,
-//                 Sphere_pointcount,
-//                 Sphere_polygons);
-//#endif
-//  }
-//  //----> Convex Object
-//  else if (type == dCylinderClass) {
-//    dReal radius,length;
-//    dGeomCylinderGetParams (g,&radius,&length);
-//    dsDrawCylinder (pos,R,length,radius);
-//  }
-//  else if (type == dGeomTransformClass) {
-//    dGeomID g2 = dGeomTransformGetGeom (g);
-//    const dReal *pos2 = dGeomGetPosition (g2);
-//    const dReal *R2 = dGeomGetRotation (g2);
-//    dVector3 actual_pos;
-//    dMatrix3 actual_R;
-//    dMultiply0_331 (actual_pos,R,pos2);
-//    actual_pos[0] += pos[0];
-//    actual_pos[1] += pos[1];
-//    actual_pos[2] += pos[2];
-//    dMultiply0_333 (actual_R,R,R2);
-//    drawGeom (g2,actual_pos,actual_R,0);
-//  }
+
   if (show_body) {
     dBodyID body = dGeomGetBody(g);
     if (body) {
