@@ -1,14 +1,5 @@
 # nestSim
 
-## TODO
-
-### Code
-* Make functions that dump a nice output of contact orientations
-* Make friction dynamically adjustable
-
-### Other
-* Rewrite Mathematica constraint counting in terms of differences
-
 ## Parameters
 
 * Friction
@@ -55,12 +46,20 @@ For a given cylindrical rod with contacts distributed (uniformly) randomly along
   - Contact orderings are assigned based on their z-value, then shifted so that the first contact has an angle of 0
     - Returns false if a pair of adjacent angles has a gap larger than pi
   - Check each pivot:
-    - Vector of pairs = `getFreeAngles(`z-sorted angles, number of contacts, pivot index, front flag`)`
-      - 
+    - `getFreeAngles`
+      - Args: z-sorted angles, # contacts, pivot index, front flag
+      - Returns: a vector of pairs corresponding to ranges within 0..2pi where that end of the rod is free to move
+    - `Suspend`
+      - Takes a vector of range pairs and appends the flipped ranges as well
+    - `processRanges`
+      - Does some bounds/order checking on range pairs
+      - Returns an equivalent vector of range pairs, where all pairs lie within 0..2pi
+    - `hasIntersectingFreeAngles`
+      - Takes two processed vectors of range pairs and check if there is any intersection
 
 ### Notes
 
-* `fmod` does not work as expected; use `fmodulo` instead.
+* `fmod` does not work with negative numbers; use `fmodulo` instead.
 
 ## Miscellaneous
 

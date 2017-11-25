@@ -32,6 +32,8 @@
 #include <algorithm>
 //#include <Eigen/Dense>
 
+#define EPSILON 0.000001
+
 #ifdef _MSC_VER
 #pragma warning(disable:4244 4305)  // for VC++, no precision loss complaints
 #endif
@@ -39,7 +41,9 @@
 #include "icosahedron_geom.h"
 
 float fmodulo(float a, float b) {
-    return a - b * floor(a / b);
+    float res = a - b * floor(a / b);
+    assert(0 <= res && res < b);
+    return res;
 }
 
 bool orderbyfloat2(float *a, float * b)
@@ -51,6 +55,7 @@ bool orderbyfloat(float a, float b)
 {
     return a < b;
 }
+
 
 // Sort vec1 by the contents of vec2.
 template <class T>
@@ -85,34 +90,36 @@ std::vector<T> sortVectorBy(const std::vector<T> vec1,
 }
 
 // returns true if front has intersecting range with back. assumes ranges have been processed.
-bool hasIntersectingFreeAngles(std::vector< std::pair<float, float> > front, std::vector< std::pair<float, float> > back){
-    for(int i=0; i<front.size(); i++){
-        for(int j=0; i<back.size(); j++){
-            std::pair<float,float> p1 = front[i];
-            std::pair<float,float> p2 = back[j];
+bool hasIntersectingFreeAngles(std::vector< std::pair<float, float> > front, std::vector< std::pair<float, float> > back) {
+    for (int i = 0; i < front.size(); i++) {
+        for (int j = 0; j < back.size(); j++) {
+            std::pair<float, float> p1 = front[i];
+            std::pair<float, float> p2 = back[j];
 
             float l = std::max(p1.first, p2.first);
             float r = std::min(p1.second, p2.second);
-            if(l < r)
-            {
-                return true;
-            }
+
+            if (l < r) { return true; }
         }
     }
+
     return false;
 }
 
 // takes ranges, returns ranges with the flipped versions
 std::vector< std::pair<float, float> > Suspend(std::vector< std::pair<float, float> > ranges)
 {
-    std::vector< std::pair<float, float> > res; res.clear();
-    for(int i=0;i<ranges.size();i++){
+    std::vector< std::pair<float, float> > res;
+    res.clear();
+
+    for (int i = 0; i < ranges.size(); i++) {
         std::pair<float,float> thets = ranges.at(i);
         assert(thets.first <= thets.second);
 
         // for each range, duplicate the flipped range as well.
         res.push_back(thets);
-        res.push_back(std::pair<float,float>(thets.first + M_PI, thets.second + M_PI));
+        res.push_back(std::pair<float,float>
+                      (thets.first + M_PI, thets.second + M_PI));
     }
 
     return res;
@@ -121,29 +128,37 @@ std::vector< std::pair<float, float> > Suspend(std::vector< std::pair<float, flo
 // make sure no values are more than 2pi while maintaining the range meaning.
 std::vector< std::pair<float, float> > processRanges(std::vector< std::pair<float, float> > ranges){
     std::vector< std::pair<float, float> > res; res.clear();
-    for(int i=0;i<ranges.size();i++){
+    for (int i = 0; i < ranges.size(); i++) {
         std::pair<float,float> thets = ranges.at(i);
-        assert(thets.first <= thets.second);
 
-        while(thets.first > 2*M_PI){
-            thets.first -= 2*M_PI;
-            thets.second -= 2*M_PI;
+        // Range must be ordered, and free ranges can't be larger than 2pi
+        assert(thets.first <= thets.second);
+        assert(thets.second - thets.first <= 2 * M_PI + EPSILON);
+
+        // Shift range so that the lower value is within 0..2pi
+        while (thets.first > 2 * M_PI) {
+            thets.first -= 2 * M_PI;
+            thets.second -= 2 * M_PI;
         }
 
-        if(thets.second <= 2*M_PI)
-        {
+        // Check if the whole range lies within 0..2pi.
+        if (thets.second <= 2 * M_PI) {
             res.push_back(thets);
         }
-        else
-        {
+        // Otherwise, split the range into two pieces.
+        else {
+            assert(thets.second <= 4 * M_PI);
             // if the range is so large it encompasses all of s1, then just one range is enough.
-            if(thets.second >= 4*M_PI){
-                res.push_back(std::pair<float,float>(0, 2*M_PI - .00001));
-                return res;
-            }
-            // split range into two peices.
-            res.push_back(std::pair<float,float>(thets.first, 2*M_PI-.00001));
-            res.push_back(std::pair<float,float>(0, thets.second-2*M_PI));
+//            if (thets.second >= 4*M_PI){
+//                printf("*************RANGE_END > 4PI\n\n");
+//                res.push_back(std::pair<float,float>(0, 2*M_PI - .00001));
+//                return res;
+//            }
+            // split range into two pieces.
+            res.push_back(std::pair<float,float>
+                          (thets.first, 2 * M_PI));
+            res.push_back(std::pair<float,float>
+                          (0, thets.second - 2 * M_PI));
         }
     }
     return res;
@@ -151,7 +166,7 @@ std::vector< std::pair<float, float> > processRanges(std::vector< std::pair<floa
 
 // given a set of angles, find if there are any angles in 0 to 2pi where the rod can move. Represented as
 // the union of the ranges in the returned vector. ranges are represented as pairs where the latter is more than the former.
-std::vector< std::pair<float, float> > getFreeAngles(float theta[], int num_contacts, int p, bool front)
+std::vector< std::pair<float, float> > getFreeAngles(std::vector<float> theta, int num_contacts, int p, bool front) // float theta[]
 {
     //todo: implement
     std::vector< std::pair<float, float> > res;
@@ -163,42 +178,54 @@ std::vector< std::pair<float, float> > getFreeAngles(float theta[], int num_cont
     if (front) { endind = p; }
     else { startind = p + 1; }
 
+    // If there are no contacts on this side of the pivot, all angles are free.
     if (startind > endind) {
-        // 0-2pi is all free.
-        res.push_back(std::pair<float, float> (0, 2 * M_PI)); // (.00001,2*M_PI-.00001));
+        res.push_back(std::pair<float, float> (0, 2 * M_PI));
         return res;
     }
 
-    // order the thetas of this bunch.
+    // Create a vector of the angles on this side of the pivot.
     std::vector<float> fthetas;
     fthetas.clear();
     for (int i = startind; i <= endind; i++)
     {
         fthetas.push_back(theta[i]);
     }
-    assert(fthetas.size() != 0); // this can't happen because of earlier index check
+
+    // this can't happen because of earlier index check
+    assert(fthetas.size() != 0);
+
+    // If there's a single contact on this side of the pivot, this end
+    // can move out at any angle between theta + pi/2 and theta + 3pi/2.
     if (fthetas.size() == 1) {
         res.push_back(std::pair<float, float>
                       (fthetas[0] + M_PI / 2.0,
-                       fthetas[0] + M_PI * 3.0/2.0));
+                       fthetas[0] + M_PI * 3.0 / 2.0));
         return res;
     }
-    std::sort(fthetas.begin(), fthetas.end(), orderbyfloat);
-    assert(fthetas.size() < 2 || fthetas[0] < fthetas[1]); // to check the sort went the right order.
+
+    // 2+ contacts in the bunch. Sort the remaining angles.
+    std::sort(fthetas.begin(), fthetas.end());
+
+    assert(fthetas.size() >= 2);
+    assert(fthetas[0] < fthetas[1]); // check the sorting order
 
     // look for gaps of more than pi in this bunch. implies free angle
-    for(int i = 0; i < fthetas.size(); i++)
+    for (int i = 0; i < fthetas.size(); i++)
     {
-        float tnext = fthetas[(i+1)%fthetas.size()];
+        float tnext = fthetas[(i + 1) % fthetas.size()];
         float tcurr = fthetas[i];
         float dt = tnext - tcurr;
-        dt += (dt < 0 ? 2*M_PI : 0); // this should only happen once. at the last iteration of the loop.
-        if(dt > M_PI)
+
+        // this should only happen once. at the last iteration of the loop.
+        dt += (dt < 0 ? 2 * M_PI : 0);
+
+        if (dt > M_PI)
         {
             float da = dt - M_PI; // size of free angle
             float la = tnext + M_PI/2.0;
             float ra = la + da;
-            res.push_back(std::pair<float,float>(la,ra));
+            res.push_back(std::pair<float,float> (la,ra));
             return res; // dt can only be more than pi once.
         }
     }
@@ -283,6 +310,7 @@ struct MyObject {
 };
 
 static int num=0;		// number of objects in simulation
+static int num_stable = 0;
 static int nextobj=0;		// next object to recycle if num==NUM
 static dWorldID world;
 static dSpaceID space;
@@ -295,7 +323,7 @@ static int random_pos = 1;	// drop objects from random position?
 static int write_world = 0;
 static int show_body = 0;
 
-// global variables start now /***/
+// global variables start now
 int maxNumContactsSimulated = 0;
 FILE * fp;
 float rad = .03; // rod radius
@@ -339,7 +367,6 @@ std::vector<float> sphericalAnglesFromR(const dMatrix3 R, bool print) {
 
 // this is called by dSpaceCollide when two objects in space are
 // potentially colliding.
-
 static void nearCallback (void *data, dGeomID o1, dGeomID o2)
 {
   int i;
@@ -532,68 +559,33 @@ bool CheckStable(int rodInd) {
     Rt[1] = R[4]; Rt[2] = R[8]; Rt[6] = R[9];
     Rt[4] = R[1]; Rt[8] = R[2]; Rt[9] = R[6];
 
-    // fprintf(fp, "cyl position: %f %f %f\n", pos[0], pos[1], pos[2]);
-    // fprintf(fp, "cyl R: %f %f %f %f %f %f %f %f %f\n", R[0],R[1],R[2],R[3],R[4],R[5],R[6],R[7],R[8]);
-
-/*    for (int i = 0; i < num_contacts; i++) {
-        fprintf(fp, "contact %d: %f %f %f\n", i, contactPos[i][0],
-                contactPos[i][1], contactPos[i][2]);
-    } */
-
-    // Get the start and end location of the rod in R3.
-/*    dVector3 point; point[0]=0; point[1]=0; point[2] = AR*rad/2; //half length
-    dVector3 out; dMultiply0_331 (out,R,point);
-    dVector3 start, end;
-    start[0]=pos[0]-out[0]; start[1]=pos[1]-out[1]; start[2]=pos[2]-out[2]; // start[1]=pos[1]+out[2] -> start[1]=pos[1]+out[1]
-    end[0]=pos[0]+out[0]; end[1]=pos[1]+out[1]; end[2]=pos[2]+out[2]; */
-
-
-    //fprintf(fp, "\tstart:\t(%f, %f, %f)\n",
-      //      start[0], start[1], start[2]);
-    //fprintf(fp, "\tend:\t(%f, %f, %f)\n",
-        //    end[0], end[1], end[2]);
-
-    std::vector<float> angles;
-    std::vector<float> z_order;
-    float contactPos2[num][3];
-
+    // Organize all of the contacts
+    std::vector<float> theta, z_order;
     for (int i = 0; i < num_contacts; i++) {
-        // recenter
+        // Recenter the contact
         for (int j = 0; j < 3; j++) {
             contactPos[i][j] -= pos[j];
         }
 
-        // unrotate
-        dMultiply0_331(contactPos2[i], Rt, contactPos[i]);
+        // Unrotate
+        dMultiply0_331(contactPos[i], Rt, contactPos[i]);
 
-        // fprintf(fp, "\t(%f, %f, %f)\n", contactPos2[i][0], contactPos2[i][1], contactPos2[i][2]);
-
-        // assign a theta and z-value for ordering later
-        float angle = atan2(contactPos2[i][1], contactPos2[i][0]);
-
-        // fmod doesn't work here:
-        angle = angle - 2 * M_PI * floor(angle / (2 * M_PI));
-        assert(angle >= 0 && angle < 2 * M_PI);
-
-        angles.push_back(angle);
-        z_order.push_back(contactPos2[i][2]);
+        float angle = fmodulo(atan2(contactPos[i][1],
+                                    contactPos[i][0]), 2 * M_PI);
+        theta.push_back(angle);
+        z_order.push_back(contactPos[i][2]);
     }
 
     // sort the angles by their 'z_order' value
-    angles = sortVectorBy(angles, z_order);
+    theta = sortVectorBy(theta, z_order);
 
-    fprintf(fp, "\tordered angles:\t");
+    fprintf(fp, "\tOrdered angles: ");
     for (int i = 0; i < num_contacts; i++) {
-        angles[i] -= angles[0]; // re-center all angles
-        fprintf(fp, "%f\t", angles[i]);
+        // re-center all angles so that the first angle is 0
+        theta[i] -= theta[0];
+        fprintf(fp, " %f", theta[i]);
     }
     fprintf(fp, "\n");
-
-    // awwwww...will fix all this later
-    float theta[num_contacts];
-    for (int i = 0; i < num_contacts; i++) {
-        theta[i] = angles[i];
-    }
 
     // parametrize contact locations by l and theta, dist from start, and angle relative to y axis.
  /*   std::vector<float*> ltheta;
@@ -639,15 +631,15 @@ bool CheckStable(int rodInd) {
     } */
 
     // Make a (deep) copy of the angles and sort the copy.
-    std::vector<float> sorted_angles = angles;
-    std::sort(sorted_angles.begin(), sorted_angles.end());
+    std::vector<float> sorted_theta = theta;
+    std::sort(sorted_theta.begin(), sorted_theta.end());
 
     // Append 2pi to the sorted angle vector
-    sorted_angles.insert(sorted_angles.end(), 2 * M_PI);
+    sorted_theta.insert(sorted_theta.end(), 2 * M_PI);
 
     // Check adjacent angles for any pi-sized gaps.
-    for (int i = 0; i < num_contacts + 1; i++) {
-        float dt = sorted_angles[(i + 1)] - sorted_angles[i];
+    for (int i = 0; i < num_contacts; i++) {
+        float dt = sorted_theta[(i + 1)] - sorted_theta[i];
         if (std::abs(dt) > M_PI) {
             fprintf(fp, "\tOpen hemispheres found.\n");
             return false;
@@ -661,8 +653,7 @@ bool CheckStable(int rodInd) {
         std::vector<std::pair<float, float> > back = processRanges(Suspend(getFreeAngles(theta, num_contacts, p, false)));
 
         // get intersecting free angles
-        bool hasIFA = hasIntersectingFreeAngles(front, back);
-        if (hasIFA) {
+        if (hasIntersectingFreeAngles(front, back)) {
             return false;
         }
     }
@@ -670,9 +661,6 @@ bool CheckStable(int rodInd) {
     // no pivot revealed intersecting free angles. therefore stable
     return true;
 }
-
-
-
 
 // called when a key pressed
 static void command (int cmd)
@@ -686,11 +674,13 @@ static void command (int cmd)
   cmd = locase (cmd);
 
   // utility function
-  if (cmd == 'z' && selected >= 0) {
+  if (cmd == 'z') {
+      fprintf(fp, "Number of objects: %d\n", num);
+      fprintf(fp, "Number of stable objects: %d\n", num_stable);
       return;
   }
 
-  // /***/ check all collisions
+  // check all collisions
   if (cmd == 'w')
   {
     dContact contact[MAX_CONTACTS];   // up to MAX_CONTACTS contacts per box-box
@@ -737,8 +727,6 @@ static void command (int cmd)
       dMatrix3 R;
       dBodyCopyPosition(obj[selected].body, pos);
       dBodyCopyRotation(obj[selected].body, R);
-      //fprintf(fp, "position: %f %f %f\n", pos[0], pos[1], pos[2]);
-      //fprintf(fp, "R: %f %f %f %f %f %f %f %f %f\n", R[0],R[1],R[2],R[3],R[4],R[5],R[6],R[7],R[8]);
 
       // get contacts
       dContact contact_array[num];
@@ -757,33 +745,30 @@ static void command (int cmd)
   // Find if any rod is stable.
   else if(cmd == 'v')
   {
-      for(int i = 0; i < num; i++){
+      num_stable = 0;
+      for (int i = 0; i < num; i++) {
           bool isStable = CheckStable(i);
-          if(isStable){
-              fprintf(fp,"************* STABLE ROD found! %d ***********\n", i);
+          if (isStable) {
+              fprintf(fp, "\t**************** Stable rod found! %d ****************\n", i);
+              num_stable++;
           }
       }
 
+      fprintf(fp, "Number of stable/total objects: %d/%d\n", num_stable, num);
   }
 
   // Check if the selected rod is stable.
-  else if (cmd == 'b')
-  {
-      if (selected >= 0) {
-          bool isStable = CheckStable(selected);
-          fprintf(fp, "selected object: %d   stability: %d\n", selected, isStable);
-      }
+  else if (cmd == 'b') {
+      if (selected >= 0) { CheckStable(selected); }
   }
 
   // Drop a capsule (spherocylinder)
-  else if (cmd == 'c')
-  {
+  else if (cmd == 'c') {
       drop();
   }
 
   // Drop lots of capsules
-  else if (cmd == 'x')
-  {
+  else if (cmd == 'x') {
       for (j = 0; j < 50; j++) { drop(); }
   }
 
@@ -896,7 +881,7 @@ static void simLoop (int pause)
 {
   dsSetColor (0,0,2);
   dSpaceCollide (space,0,&nearCallback);
-  if (!pause) dWorldQuickStep (world,0.02);
+  if (!pause) dWorldQuickStep (world, 0.02);
 
   if (write_world) {
     FILE *f = fopen ("state.dif","wt");
