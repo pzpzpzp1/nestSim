@@ -27,6 +27,8 @@
 #include "texturepath.h"
 #include <assert.h>
 #include <vector>
+#include <cmath>
+#include <iostream>
 #include <algorithm>
 //#include <Eigen/Dense>
 
@@ -359,6 +361,8 @@ static void start()
   printf ("To show/save total number of contacts, press w.\n");
   printf ("To show/save number of contacts for the selected object, press q.\n");
   printf ("To toggle immobility of current objects, press k.\n\n");
+  printf ("To see if any objects are stable, press v.\n");
+  printf ("To see if the selected object is stable, press b.\n");
 }
 
 
@@ -369,7 +373,7 @@ char locase (char c)
 }
 
 bool CheckStable(int rodInd){
-    //fprintf(fp, "\nChecking stability of rod %d\n", rodInd);
+    fprintf(fp, "\nChecking stability of rod %d\n", rodInd);
 
     // get contacts
     dContact contact_array[num];
@@ -453,7 +457,7 @@ bool CheckStable(int rodInd){
     {
         free(ltheta.at(i)); // free unused memory.
         float dt = theta[(i+1)%num_contacts]-theta[i];
-        if(abs(dt) > M_PI){ return false; } // a angle difference anywhere of more than pi means the rod can move in that dir.
+        if(std::abs(dt) > M_PI){ return false; } // a angle difference anywhere of more than pi means the rod can move in that dir.
     }
 
     for (int p = 0; p < num_contacts; p++)
@@ -519,7 +523,7 @@ static void command (int cmd)
     if (totalc >= maxNumContactsSimulated )
     {
       maxNumContactsSimulated = totalc;
-      fprintf(fp, "numContacts %d maxcontacts %d \n\n", totalc, maxNumContactsSimulated);
+      fprintf(fp, "numContacts %d   maxcontacts %d \n\n", totalc, maxNumContactsSimulated);
     }
 
   }
@@ -554,21 +558,26 @@ static void command (int cmd)
   // Find if any rod is stable or not.
   else if(cmd == 'v')
   {
-      for(int i =0; i < num; i++){
+      for(int i = 0; i < num; i++){
           bool isStable = CheckStable(i);
           if(isStable){
-              fprintf(fp,"STABLE ROD found! %d", i);
+              fprintf(fp,"*************STABLE ROD found! %d ***********", i);
           }
       }
 
-      /*if (selected >=0) {
-        bool isStable = CheckStable(selected);
-        fprintf(fp, "selected object: %d stability:%d\n", selected, isStable);
-      }*/
+  }
+
+  // Check if the selected rod is stable.
+  else if (cmd == 'b')
+  {
+      if (selected >= 0) {
+          bool isStable = CheckStable(selected);
+          fprintf(fp, "selected object: %d   stability: %d\n", selected, isStable);
+      }
   }
 
   // Drop a capsule (spherocylinder)
-  if (cmd == 'c')
+  else if (cmd == 'c')
   {
     setBody = 0;
     if (num < NUM) {
@@ -594,8 +603,7 @@ static void command (int cmd)
     dMatrix3 R;
     if (0==0) // if (random_pos) /**/
     {
-
-      // [-1,1 -1,1 2]
+      // drops capsules from positions within [-1..1, -1..1, 0..2]
       dBodySetPosition (obj[i].body,
                         dRandReal()*2-1,dRandReal()*2-1,dRandReal()+2);
 
@@ -611,7 +619,7 @@ static void command (int cmd)
     dBodySetRotation (obj[i].body,R);
     dBodySetData (obj[i].body,(void*) i);
 
-    if (cmd == 'c') { /***/
+    if (cmd == 'c') {
       dMassSetCapsule (&m,DENSITY,3, rad, rad * AR);
       obj[i].geom[0] = dCreateCapsule (space, rad, rad * AR);
     }
@@ -622,12 +630,10 @@ static void command (int cmd)
       }
 
     dBodySetMass (obj[i].body,&m);
-
-    // Make immovable (infinite mass)
-    // dBodySetKinematic(obj[i].body);
   }
 
-  if (cmd == 'k') {
+  // toggle immobility
+  else if (cmd == 'k') {
     if (dBodyIsKinematic(obj[0].body) == 0) {
       for (j = 0; j < num; j++) {
         dBodySetKinematic(obj[j].body);
@@ -642,7 +648,7 @@ static void command (int cmd)
     }
   }
 
-  if (cmd == ' ') {
+  else if (cmd == ' ') {
     selected++;
     if (selected >= num) selected = 0;
     if (selected < 0) selected = 0;
@@ -704,43 +710,43 @@ void drawGeom (dGeomID g, const dReal *pos, const dReal *R, int show_aabb)
     dGeomCapsuleGetParams (g,&radius,&length);
     dsDrawCapsule (pos,R,length,radius);
   }
-  //<---- Convex Object
-  else if (type == dConvexClass)
-  {
-#if 0
-    dsDrawConvex(pos,R,planes,
-                 planecount,
-                 points,
-                 pointcount,
-                 polygons);
-#else
-    dsDrawConvex(pos,R,
-                 Sphere_planes,
-                 Sphere_planecount,
-                 Sphere_points,
-                 Sphere_pointcount,
-                 Sphere_polygons);
-#endif
-  }
-  //----> Convex Object
-  else if (type == dCylinderClass) {
-    dReal radius,length;
-    dGeomCylinderGetParams (g,&radius,&length);
-    dsDrawCylinder (pos,R,length,radius);
-  }
-  else if (type == dGeomTransformClass) {
-    dGeomID g2 = dGeomTransformGetGeom (g);
-    const dReal *pos2 = dGeomGetPosition (g2);
-    const dReal *R2 = dGeomGetRotation (g2);
-    dVector3 actual_pos;
-    dMatrix3 actual_R;
-    dMultiply0_331 (actual_pos,R,pos2);
-    actual_pos[0] += pos[0];
-    actual_pos[1] += pos[1];
-    actual_pos[2] += pos[2];
-    dMultiply0_333 (actual_R,R,R2);
-    drawGeom (g2,actual_pos,actual_R,0);
-  }
+//  //<---- Convex Object
+//  else if (type == dConvexClass)
+//  {
+//#if 0
+//    dsDrawConvex(pos,R,planes,
+//                 planecount,
+//                 points,
+//                 pointcount,
+//                 polygons);
+//#else
+//    dsDrawConvex(pos,R,
+//                 Sphere_planes,
+//                 Sphere_planecount,
+//                 Sphere_points,
+//                 Sphere_pointcount,
+//                 Sphere_polygons);
+//#endif
+//  }
+//  //----> Convex Object
+//  else if (type == dCylinderClass) {
+//    dReal radius,length;
+//    dGeomCylinderGetParams (g,&radius,&length);
+//    dsDrawCylinder (pos,R,length,radius);
+//  }
+//  else if (type == dGeomTransformClass) {
+//    dGeomID g2 = dGeomTransformGetGeom (g);
+//    const dReal *pos2 = dGeomGetPosition (g2);
+//    const dReal *R2 = dGeomGetRotation (g2);
+//    dVector3 actual_pos;
+//    dMatrix3 actual_R;
+//    dMultiply0_331 (actual_pos,R,pos2);
+//    actual_pos[0] += pos[0];
+//    actual_pos[1] += pos[1];
+//    actual_pos[2] += pos[2];
+//    dMultiply0_333 (actual_R,R,R2);
+//    drawGeom (g2,actual_pos,actual_R,0);
+//  }
   if (show_body) {
     dBodyID body = dGeomGetBody(g);
     if (body) {
@@ -832,7 +838,7 @@ int main (int argc, char **argv)
 {
   // init global vars /***/
   maxNumContactsSimulated = 0;
-  fp = fopen("output.txt","w");
+  fp = stdout;//fopen("output.txt","w");
   AR = 50;
 
   // setup pointers to drawstuff callback functions
@@ -875,7 +881,10 @@ int main (int argc, char **argv)
   dWorldSetStepThreadingImplementation(world, dThreadingImplementationGetFunctions(threading), threading);
 
   // draw bounding box
-  // ...
+  dGeomID wall_N = dCreatePlane(space, 0, -1, 0, -2);
+  dGeomID wall_E = dCreatePlane(space, -1, 0, 0, -2);
+  dGeomID wall_S = dCreatePlane(space, 0, 1, 0, -2);
+  dGeomID wall_W = dCreatePlane(space, 1, 0, 0, -2);
 
   // run simulation
   dsSimulationLoop (argc,argv,800,600,&fn);
