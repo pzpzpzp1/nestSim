@@ -47,6 +47,35 @@ bool orderbyfloat(float a, float b)
     return a < b;
 }
 
+template <class T>
+std::vector<T> sortVectorBy(const std::vector<T> vec1,
+                            const std::vector<T> vec2) {
+    std::vector<T> result;
+    std::vector< std::vector<T> > pairs;
+
+    struct comparator {
+        bool operator()(const std::vector<T> &pair1,
+                        const std::vector<T> &pair2) {
+            return pair1[1] < pair2[1];
+        }
+    };
+
+    for (int i = 0; i < vec2.size(); i++) {
+        std::vector<T> pair;
+        pair.push_back(vec1[i]);
+        pair.push_back(vec2[i]);
+        pairs.push_back(pair);
+    }
+
+    std::sort(pairs.begin(), pairs.end(), comparator());
+
+    for (int i = 0; i < vec2.size(); i++) {
+        result.push_back(pairs[i][0]);
+    }
+
+    return result;
+}
+
 // returns true if front has intersecting range with back. assumes ranges have been processed.
 bool hasIntersectingFreeAngles(std::vector< std::pair<float, float> > front, std::vector< std::pair<float, float> > back){
     for(int i=0; i<front.size(); i++){
@@ -377,7 +406,7 @@ static void start()
   dsSetViewpoint (xyz,hpr);
   printf ("To drop another object, press:\n");
   printf ("   c for capsule.\n");
-  printf ("   x for 100 capsules.\n");
+  printf ("   x for 50 capsules.\n");
   printf ("To select an object, press space.\n");
   printf ("To unselect objects, press u.\n");
   printf ("To dump transformation data for the selected object, press p.\n");
@@ -440,7 +469,7 @@ bool drop(void) {
     float h_angle = dRandReal() * 2 * M_PI;
     float r_angle = dRandReal() * 2 * M_PI;
 
-    // dRFromAxisAndAngle(R, 1, 0, 0, M_PI / 4);
+    //dRFromAxisAndAngle(R, 1, 0, 0, 0.01);
     dRFromAxisAndAngle (R, sin(xy_angle)*sin(h_angle), cos(xy_angle)*
                         sin(h_angle), cos(h_angle),r_angle);
 
@@ -490,35 +519,74 @@ bool CheckStable(int rodInd) {
     dBodyCopyRotation(obj[rodInd].body, R);
 
     // Rt is R transpose which is also the inverse of R
-    Rt[0]  = R[0];
-    Rt[5]  = R[5];
-    Rt[10] = R[10];
-    Rt[1]  = R[4];
-    Rt[2]  = R[8];
-    Rt[6]  = R[9];
-    Rt[4]  = R[1];
-    Rt[8]  = R[2];
-    Rt[9]  = R[6];
+    Rt[0] = R[0]; Rt[5] = R[5]; Rt[10] = R[10];
+    Rt[1] = R[4]; Rt[2] = R[8]; Rt[6] = R[9];
+    Rt[4] = R[1]; Rt[8] = R[2]; Rt[9] = R[6];
 
     // fprintf(fp, "cyl position: %f %f %f\n", pos[0], pos[1], pos[2]);
     // fprintf(fp, "cyl R: %f %f %f %f %f %f %f %f %f\n", R[0],R[1],R[2],R[3],R[4],R[5],R[6],R[7],R[8]);
 
-    std::vector<float> sphAngles = sphericalAnglesFromR(R, false);
-
-    for (int i = 0; i < num_contacts; i++) {
-        //fprintf(fp, "contact %d: %f %f %f\n", i, contactPos[i][0],
-          //      contactPos[i][1], contactPos[i][2]);
-    }
+/*    for (int i = 0; i < num_contacts; i++) {
+        fprintf(fp, "contact %d: %f %f %f\n", i, contactPos[i][0],
+                contactPos[i][1], contactPos[i][2]);
+    } */
 
     // Get the start and end location of the rod in R3.
-    dVector3 point; point[0]=0; point[1]=0; point[2] = AR*rad/2; //half length
+/*    dVector3 point; point[0]=0; point[1]=0; point[2] = AR*rad/2; //half length
     dVector3 out; dMultiply0_331 (out,R,point);
     dVector3 start, end;
-    start[0]=pos[0]+out[0]; start[1]=pos[1]+out[1]; start[2]=pos[2]+out[2]; // start[1]=pos[1]+out[2] -> start[1]=pos[1]+out[1]
-    end[0]=pos[0]-out[0]; end[1]=pos[1]-out[1]; end[2]=pos[2]-out[2];
+    start[0]=pos[0]-out[0]; start[1]=pos[1]-out[1]; start[2]=pos[2]-out[2]; // start[1]=pos[1]+out[2] -> start[1]=pos[1]+out[1]
+    end[0]=pos[0]+out[0]; end[1]=pos[1]+out[1]; end[2]=pos[2]+out[2]; */
+
+
+    //fprintf(fp, "\tstart:\t(%f, %f, %f)\n",
+      //      start[0], start[1], start[2]);
+    //fprintf(fp, "\tend:\t(%f, %f, %f)\n",
+        //    end[0], end[1], end[2]);
+
+    std::vector<float> angles;
+    std::vector<float> z_order;
+    float contactPos2[num][3];
+
+    for (int i = 0; i < num_contacts; i++) {
+        // recenter
+        for (int j = 0; j < 3; j++) {
+            contactPos[i][j] -= pos[j];
+        }
+
+        // unrotate
+        dMultiply0_331(contactPos2[i], Rt, contactPos[i]);
+
+        // fprintf(fp, "\t(%f, %f, %f)\n", contactPos2[i][0], contactPos2[i][1], contactPos2[i][2]);
+
+        // assign a theta and z-value for ordering later
+        float angle = atan2(contactPos2[i][1], contactPos2[i][0]);
+
+        // fmod doesn't work here:
+        angle = angle - 2 * M_PI * floor(angle / (2 * M_PI));
+        assert(angle >= 0);// && angle < 2 * M_PI);
+
+        angles.push_back(angle);
+        z_order.push_back(contactPos2[i][2]);
+    }
+
+    // sort the angles by their 'z_order' value
+    angles = sortVectorBy(angles, z_order);
+
+    fprintf(fp, "\tordered angles:\t");
+    for (int i = 0; i < num_contacts; i++) {
+        fprintf(fp, "%f\t", angles[i]);
+    }
+    fprintf(fp, "\n");
+
+    // awwwww...will fix all this later
+    float theta[num_contacts];
+    for (int i = 0; i < num_contacts; i++) {
+        theta[i] = angles[i];
+    }
 
     // parametrize contact locations by l and theta, dist from start, and angle relative to y axis.
-    std::vector<float*> ltheta;
+ /*   std::vector<float*> ltheta;
     ltheta.clear();
     float theta[num_contacts];
     for(int i = 0; i < num_contacts; i++) {
@@ -551,27 +619,35 @@ bool CheckStable(int rodInd) {
     }
     fprintf(fp, "\n");
   // fprintf(fp,"\n--- thetaend\n");
-
+*/
     // calculate stability
-    for (int i = 0; i < num_contacts; i++)
+/*    for (int i = 0; i < num_contacts; i++)
     {
         free(ltheta.at(i)); // free unused memory.
         float dt = theta[(i+1)%num_contacts]-theta[i];
         if(std::abs(dt) > M_PI){ return false; } // a angle difference anywhere of more than pi means the rod can move in that dir.
+    } */
+
+    for (int i = 0; i < num_contacts; i++) {
+        float dt = angles[(i+1) % num_contacts] - angles[i];
+        if (std::abs(dt) > M_PI) {
+            fprintf(fp, "\topen hemispheres found.\n");
+            return false;
+        }
     }
 
-    for (int p = 0; p < num_contacts; p++)
-    {
+    for (int p = 0; p < num_contacts; p++) {
         // p is a pivot. splits the contacts to [0:p] and [p+1:end]
         std::vector<std::pair<float, float> > front = processRanges(Suspend(getFreeAngles(theta, num_contacts, p, true)));
         std::vector<std::pair<float, float> > back = processRanges(Suspend(getFreeAngles(theta, num_contacts, p, false)));
 
         // get intersecting free angles
         bool hasIFA = hasIntersectingFreeAngles(front, back);
-        if(hasIFA){
+        if (hasIFA) {
             return false;
         }
     }
+
     // no pivot revealed intersecting free angles. therefore stable
     return true;
 }
