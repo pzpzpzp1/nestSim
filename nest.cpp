@@ -271,6 +271,34 @@ static int doFeedback=0;
 static MyFeedback feedbacks[MAX_FEEDBACKNUM];
 static int fbnum=0;
 
+
+
+// Return the spherical angles that correspond to the matrix R (of a rod that started aligned with the z axis)
+std::vector<float> sphericalAnglesFromR(const dMatrix3 R, bool print) {
+  // There are better ways to do this but w/e
+
+  std::vector<float> sphericalAngles;
+  dVector3 initial, final;
+  initial[2] = 1;
+  float theta;
+  float phi;
+
+  dMultiply0_331(final, R, initial);
+
+  theta = acos(final[2]);
+  sphericalAngles.push_back(theta);
+
+  phi = atan(final[1] / final[0]);
+  sphericalAngles.push_back(phi);
+
+  if (print) {
+    fprintf(fp, "theta: %f\n", theta);
+    fprintf(fp, "phi:   %f\n", phi);
+  }
+
+  return sphericalAngles;
+}
+
 // this is called by dSpaceCollide when two objects in space are
 // potentially colliding.
 
@@ -356,7 +384,7 @@ static void start()
   printf ("To toggle showing the contact points, press t.\n");
   printf ("To save the current state to 'state.dif', press 1.\n");
   printf ("To show joint feedbacks of selected object, press f.\n");
-  printf ("To get the position/rotation of the selected object, press p.\n\n");
+  printf ("To get the position/rotation of the selected object, press p.\n");
 
   printf ("To show/save total number of contacts, press w.\n");
   printf ("To show/save number of contacts for the selected object, press q.\n");
@@ -412,26 +440,31 @@ bool CheckStable(int rodInd){
     Rt[9]  = R[6];
 
     fprintf(fp, "cyl position: %f %f %f\n", pos[0], pos[1], pos[2]);
-    fprintf(fp, "cyl R: %f %f %f %f %f %f %f %f %f\n", R[0],R[1],R[2],R[3],R[4],R[5],R[6],R[7],R[8]);
-    for(int i =0; i < num_contacts; i++){
-        fprintf(fp, "contact %d: %f %f %f\n",i, contactPos[i][0], contactPos[i][1], contactPos[i][2]);
+    // fprintf(fp, "cyl R: %f %f %f %f %f %f %f %f %f\n", R[0],R[1],R[2],R[3],R[4],R[5],R[6],R[7],R[8]);
+
+    std::vector<float> sphAngles = sphericalAnglesFromR(R, true);
+
+    for (int i = 0; i < num_contacts; i++) {
+        //fprintf(fp, "contact %d: %f %f %f\n", i, contactPos[i][0],
+          //      contactPos[i][1], contactPos[i][2]);
     }
 
     // Get the start and end location of the rod in R3.
     dVector3 point; point[0]=0; point[1]=0; point[2] = AR*rad/2; //half length
     dVector3 out; dMultiply0_331 (out,R,point);
     dVector3 start, end;
-    start[0]=pos[0]+out[0]; start[1]=pos[1]+out[2]; start[2]=pos[2]+out[2];
+    start[0]=pos[0]+out[0]; start[1]=pos[1]+out[1]; start[2]=pos[2]+out[2]; // start[1]=pos[1]+out[2] -> start[1]=pos[1]+out[1]
     end[0]=pos[0]-out[0]; end[1]=pos[1]-out[1]; end[2]=pos[2]-out[2];
 
     // parametrize contact locations by l and theta, dist from start, and angle relative to y axis.
-    std::vector<float*> ltheta; ltheta.clear();
+    std::vector<float*> ltheta;
+    ltheta.clear();
     float theta[num_contacts];
-    for(int i = 0; i < num_contacts; i++){
+    for(int i = 0; i < num_contacts; i++) {
         // recenter
-        contactPos[i][0]-=start[0];
-        contactPos[i][1]-=start[1];
-        contactPos[i][2]-=start[2];
+        contactPos[i][0] -= start[0];
+        contactPos[i][1] -= start[1];
+        contactPos[i][2] -= start[2];
         // reorient
         dVector3 rotCont;
         dMultiply0_331(rotCont, Rt, contactPos[i]);
@@ -620,8 +653,10 @@ static void command (int cmd)
       float h_angle = dRandReal() * 2 * M_PI;
       float r_angle = dRandReal() * 2 * M_PI;
 
-      dRFromAxisAndAngle (R, sin(xy_angle)*sin(h_angle), cos(xy_angle)*sin(h_angle),
-                          cos(h_angle),r_angle);
+
+      // dRFromAxisAndAngle(R, 1, 0, 0, M_PI / 4);
+      dRFromAxisAndAngle (R, sin(xy_angle)*sin(h_angle), cos(xy_angle)*
+                          sin(h_angle), cos(h_angle),r_angle);
     }
 
     dBodySetRotation (obj[i].body, R);
@@ -677,12 +712,16 @@ static void command (int cmd)
   else if (cmd == 'p' && selected >= 0)
   {
     const dReal* pos = dGeomGetPosition(obj[selected].geom[0]);
-    const dReal* rot = dGeomGetRotation(obj[selected].geom[0]);
-    printf("POSITION:\n\t[%f,%f,%f]\n\n",pos[0],pos[1],pos[2]);
-    printf("ROTATION:\n\t[%f,%f,%f,%f]\n\t[%f,%f,%f,%f]\n\t[%f,%f,%f,%f]\n\n",
+    std::vector<float> angles = sphericalAnglesFromR(dGeomGetRotation(obj[selected].geom[0]), false);
+    // const dReal* rot = dGeomGetRotation(obj[selected].geom[0]);
+    printf("Object %d:\n", selected);
+    printf("\tposition:\t[%f, %f, %f]\n", pos[0], pos[1], pos[2]);
+    printf("\trotation:\t[%f, %f]\t\t(theta, phi)\n\n",
+           angles[0], angles[1]);
+    /* printf("ROTATION:\n\t[%f,%f,%f,%f]\n\t[%f,%f,%f,%f]\n\t[%f,%f,%f,%f]\n\n",
            rot[0],rot[1],rot[2],rot[3],
            rot[4],rot[5],rot[6],rot[7],
-           rot[8],rot[9],rot[10],rot[11]);
+           rot[8],rot[9],rot[10],rot[11]); */
   }
   else if (cmd == 'f' && selected >= 0 && selected < num) {
     if (dBodyIsEnabled(obj[selected].body))
