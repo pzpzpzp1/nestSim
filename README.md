@@ -47,9 +47,16 @@ For a given cylindrical rod with contacts distributed (uniformly) randomly along
 
 ### Stability checking
 
-```
-bool CheckStable(int rodInd)
-```
+* `bool CheckStable(int rodInd)`
+  - Identifies the number and positions of contacts on a given rod
+    - Returns false if the number of contacts is <= 3
+  - Contact positions are shifted so that the rod is centered at (0, 0, 0), vertically oriented
+  - Contact angles are assigned based on their projection onto the x-y plane
+  - Contact orderings are assigned based on their z-value, then shifted so that the first contact has an angle of 0
+    - Returns false if a pair of adjacent angles has a gap larger than pi
+  - Check each pivot:
+    - Vector of pairs = `getFreeAngles(`z-sorted angles, number of contacts, pivot index, front flag`)`
+      - 
 
 ### Notes
 

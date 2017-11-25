@@ -157,25 +157,21 @@ std::vector< std::pair<float, float> > getFreeAngles(float theta[], int num_cont
     std::vector< std::pair<float, float> > res;
     res.clear();
 
+    // Set indices for range
     int startind = 0;
     int endind = num_contacts - 1;
+    if (front) { endind = p; }
+    else { startind = p + 1; }
 
-    if(front)
-    {
-        endind = p;
-    }
-    else
-    {
-        startind = p + 1;
-    }
-    if(startind > endind){
+    if (startind > endind) {
         // 0-2pi is all free.
-        res.push_back(std::pair<float, float>(.00001,2*M_PI-.00001));
+        res.push_back(std::pair<float, float> (0, 2 * M_PI)); // (.00001,2*M_PI-.00001));
         return res;
     }
 
     // order the thetas of this bunch.
-    std::vector<float> fthetas; fthetas.clear();
+    std::vector<float> fthetas;
+    fthetas.clear();
     for (int i = startind; i <= endind; i++)
     {
         fthetas.push_back(theta[i]);
@@ -588,6 +584,7 @@ bool CheckStable(int rodInd) {
 
     fprintf(fp, "\tordered angles:\t");
     for (int i = 0; i < num_contacts; i++) {
+        angles[i] -= angles[0]; // re-center all angles
         fprintf(fp, "%f\t", angles[i]);
     }
     fprintf(fp, "\n");
@@ -641,14 +638,23 @@ bool CheckStable(int rodInd) {
         if(std::abs(dt) > M_PI){ return false; } // a angle difference anywhere of more than pi means the rod can move in that dir.
     } */
 
-    for (int i = 0; i < num_contacts; i++) {
-        float dt = angles[(i + 1) % num_contacts] - angles[i];
+    // Make a (deep) copy of the angles and sort the copy.
+    std::vector<float> sorted_angles = angles;
+    std::sort(sorted_angles.begin(), sorted_angles.end());
+
+    // Append 2pi to the sorted angle vector
+    sorted_angles.insert(sorted_angles.end(), 2 * M_PI);
+
+    // Check adjacent angles for any pi-sized gaps.
+    for (int i = 0; i < num_contacts + 1; i++) {
+        float dt = sorted_angles[(i + 1)] - sorted_angles[i];
         if (std::abs(dt) > M_PI) {
-            fprintf(fp, "\topen hemispheres found.\n");
+            fprintf(fp, "\tOpen hemispheres found.\n");
             return false;
         }
     }
 
+    // Check all pivots.
     for (int p = 0; p < num_contacts; p++) {
         // p is a pivot. splits the contacts to [0:p] and [p+1:end]
         std::vector<std::pair<float, float> > front = processRanges(Suspend(getFreeAngles(theta, num_contacts, p, true)));
