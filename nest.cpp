@@ -983,10 +983,10 @@ int main (int argc, char **argv)
   dWorldSetStepThreadingImplementation(world, dThreadingImplementationGetFunctions(threading), threading);
 
   // draw bounding box
-  dGeomID wall_N = dCreatePlane(space, 0, -1, 0, -2);
-  dGeomID wall_E = dCreatePlane(space, -1, 0, 0, -2);
-  dGeomID wall_S = dCreatePlane(space, 0, 1, 0, -2);
-  dGeomID wall_W = dCreatePlane(space, 1, 0, 0, -2);
+//  dGeomID wall_N = dCreatePlane(space, 0, -1, 0, -2);
+//  dGeomID wall_E = dCreatePlane(space, -1, 0, 0, -2);
+//  dGeomID wall_S = dCreatePlane(space, 0, 1, 0, -2);
+//  dGeomID wall_W = dCreatePlane(space, 1, 0, 0, -2);
 
   // run simulation
   dsSimulationLoop (argc,argv,800,600,&fn);
