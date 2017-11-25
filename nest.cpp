@@ -377,6 +377,7 @@ static void start()
   dsSetViewpoint (xyz,hpr);
   printf ("To drop another object, press:\n");
   printf ("   c for capsule.\n");
+  printf ("   x for 100 capsules.\n");
   printf ("To select an object, press space.\n");
   printf ("To unselect objects, press u.\n");
   printf ("To dump transformation data for the selected object, press p.\n");
@@ -388,9 +389,9 @@ static void start()
 
   printf ("To show/save total number of contacts, press w.\n");
   printf ("To show/save number of contacts for the selected object, press q.\n");
-  printf ("To toggle immobility of current objects, press k.\n\n");
+  printf ("To toggle immobility of current objects, press k.\n");
   printf ("To see if any objects are stable, press v.\n");
-  printf ("To see if the selected object is stable, press b.\n");
+  printf ("To see if the selected object is stable, press b.\n\n");
 }
 
 
@@ -400,7 +401,67 @@ char locase (char c)
   else return c;
 }
 
-bool CheckStable(int rodInd){
+bool drop(void) {
+    size_t i;
+    int j,k;
+    dReal sides[3];
+    dMass m;
+    int setBody = 0;
+
+    // Create and drop a rod.
+    if (num < NUM) {
+      i = num;
+      num++;
+    }
+    else {
+      i = nextobj;
+      nextobj++;
+      if (nextobj >= num) nextobj = 0;
+
+      // destroy the body and geoms for slot i // this is useful for later. removing objects.
+      dBodyDestroy (obj[i].body);
+      for (k=0; k < GPB; k++) {
+        if (obj[i].geom[k]) dGeomDestroy (obj[i].geom[k]);
+      }
+      memset (&obj[i],0,sizeof(obj[i]));
+    }
+
+    obj[i].body = dBodyCreate (world);
+    for (k=0; k<3; k++) sides[k] = dRandReal()*0.5+0.1;
+
+    dMatrix3 R;
+
+    // drops capsules from positions within [-1..1, -1..1, 0..2]
+    dBodySetPosition (obj[i].body,
+                      dRandReal()*2-1,dRandReal()*2-1,dRandReal()+2);
+
+    // all orientations uniformly /***/
+    float xy_angle = dRandReal() * 2 * M_PI;
+    float h_angle = dRandReal() * 2 * M_PI;
+    float r_angle = dRandReal() * 2 * M_PI;
+
+    // dRFromAxisAndAngle(R, 1, 0, 0, M_PI / 4);
+    dRFromAxisAndAngle (R, sin(xy_angle)*sin(h_angle), cos(xy_angle)*
+                        sin(h_angle), cos(h_angle),r_angle);
+
+    dBodySetRotation (obj[i].body, R);
+
+    dBodySetData (obj[i].body,(void*) i);
+
+    dMassSetCapsule (&m,DENSITY,3, rad, rad * AR);
+    obj[i].geom[0] = dCreateCapsule (space, rad, rad * AR);
+
+    if (!setBody)
+      for (k=0; k < GPB; k++) {
+        if (obj[i].geom[k]) dGeomSetBody (obj[i].geom[k],obj[i].body);
+      }
+
+    dBodySetMass (obj[i].body,&m);
+
+    return true;
+}
+
+bool CheckStable(int rodInd) {
     fprintf(fp, "Checking stability of rod %d\n", rodInd);
 
     // get contacts
@@ -439,10 +500,10 @@ bool CheckStable(int rodInd){
     Rt[8]  = R[2];
     Rt[9]  = R[6];
 
-    fprintf(fp, "cyl position: %f %f %f\n", pos[0], pos[1], pos[2]);
+    // fprintf(fp, "cyl position: %f %f %f\n", pos[0], pos[1], pos[2]);
     // fprintf(fp, "cyl R: %f %f %f %f %f %f %f %f %f\n", R[0],R[1],R[2],R[3],R[4],R[5],R[6],R[7],R[8]);
 
-    std::vector<float> sphAngles = sphericalAnglesFromR(R, true);
+    std::vector<float> sphAngles = sphericalAnglesFromR(R, false);
 
     for (int i = 0; i < num_contacts; i++) {
         //fprintf(fp, "contact %d: %f %f %f\n", i, contactPos[i][0],
@@ -478,15 +539,18 @@ bool CheckStable(int rodInd){
         ltheta.push_back(lthet);
     }
     std::sort(ltheta.begin(), ltheta.end(), orderbyfloat2);
-    fprintf(fp,"--- thetabegin\n");
+    // fprintf(fp,"--- thetabegin\n");
+    fprintf(fp, "\tthetas: ");
     for(int i = 0; i < num_contacts; i++){
         // recenter angles and assert necessary conditions
         theta[i] = (ltheta.at(i))[1] - (ltheta.at(0))[1];
         while(theta[i] < 0) {theta[i] += 8*M_PI;} theta[i] = fmod(theta[i], 2*M_PI);
         assert(theta[i] == theta[i]); // catch any nans. they pollute the batch.
         assert(theta[i] >= 0);
-        fprintf(fp,"theta: %f ", theta[i]);
-    } fprintf(fp,"\n--- thetaend\n");
+        fprintf(fp, "%f\t", theta[i]);
+    }
+    fprintf(fp, "\n");
+  // fprintf(fp,"\n--- thetaend\n");
 
     // calculate stability
     for (int i = 0; i < num_contacts; i++)
@@ -572,15 +636,15 @@ static void command (int cmd)
   // Check collisions for selected object
   if (cmd == 'q') {
     if (selected >=0) {
-      fprintf(fp, "selected object: %d\n", selected);
+      fprintf(fp, "\tselected object: %d\n", selected);
 
       // print object info (position, orientation, etc.)
       dVector3 pos;
       dMatrix3 R;
       dBodyCopyPosition(obj[selected].body, pos);
       dBodyCopyRotation(obj[selected].body, R);
-      fprintf(fp, "position: %f %f %f\n", pos[0], pos[1], pos[2]);
-      fprintf(fp, "R: %f %f %f %f %f %f %f %f %f\n", R[0],R[1],R[2],R[3],R[4],R[5],R[6],R[7],R[8]);
+      //fprintf(fp, "position: %f %f %f\n", pos[0], pos[1], pos[2]);
+      //fprintf(fp, "R: %f %f %f %f %f %f %f %f %f\n", R[0],R[1],R[2],R[3],R[4],R[5],R[6],R[7],R[8]);
 
       // get contacts
       dContact contact_array[num];
@@ -602,7 +666,7 @@ static void command (int cmd)
       for(int i = 0; i < num; i++){
           bool isStable = CheckStable(i);
           if(isStable){
-              fprintf(fp,"************* STABLE ROD found! %d ***********", i);
+              fprintf(fp,"************* STABLE ROD found! %d ***********\n", i);
           }
       }
 
@@ -620,60 +684,13 @@ static void command (int cmd)
   // Drop a capsule (spherocylinder)
   else if (cmd == 'c')
   {
-    setBody = 0;
-    if (num < NUM) {
-      i = num;
-      num++;
-    }
-    else {
-      i = nextobj;
-      nextobj++;
-      if (nextobj >= num) nextobj = 0;
+      drop();
+  }
 
-      // destroy the body and geoms for slot i // this is useful for later. removing objects.
-      dBodyDestroy (obj[i].body);
-      for (k=0; k < GPB; k++) {
-        if (obj[i].geom[k]) dGeomDestroy (obj[i].geom[k]);
-      }
-      memset (&obj[i],0,sizeof(obj[i]));
-    }
-
-    obj[i].body = dBodyCreate (world);
-    for (k=0; k<3; k++) sides[k] = dRandReal()*0.5+0.1;
-
-    dMatrix3 R;
-    if (0==0) // if (random_pos) /**/
-    {
-      // drops capsules from positions within [-1..1, -1..1, 0..2]
-      dBodySetPosition (obj[i].body,
-                        dRandReal()*2-1,dRandReal()*2-1,dRandReal()+2);
-
-      // all orientations uniformly /***/
-      float xy_angle = dRandReal() * 2 * M_PI;
-      float h_angle = dRandReal() * 2 * M_PI;
-      float r_angle = dRandReal() * 2 * M_PI;
-
-
-      // dRFromAxisAndAngle(R, 1, 0, 0, M_PI / 4);
-      dRFromAxisAndAngle (R, sin(xy_angle)*sin(h_angle), cos(xy_angle)*
-                          sin(h_angle), cos(h_angle),r_angle);
-    }
-
-    dBodySetRotation (obj[i].body, R);
-
-    dBodySetData (obj[i].body,(void*) i);
-
-    if (cmd == 'c') {
-      dMassSetCapsule (&m,DENSITY,3, rad, rad * AR);
-      obj[i].geom[0] = dCreateCapsule (space, rad, rad * AR);
-    }
-
-    if (!setBody)
-      for (k=0; k < GPB; k++) {
-        if (obj[i].geom[k]) dGeomSetBody (obj[i].geom[k],obj[i].body);
-      }
-
-    dBodySetMass (obj[i].body,&m);
+  // Drop lots of capsules
+  else if (cmd == 'x')
+  {
+      for (j = 0; j < 50; j++) { drop(); }
   }
 
   // toggle immobility
