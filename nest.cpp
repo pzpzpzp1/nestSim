@@ -306,7 +306,7 @@ unsigned int polygons[] = //Polygons for a cube (6 squares)
 
 struct MyObject {
   dBodyID body;			// the body
-  dGeomID geom[GPB];		// geometries representing this body
+  dGeomID geom;		// geometries representing this body
 };
 
 static int num=0;		// number of objects in simulation
@@ -314,7 +314,9 @@ static int num_stable = 0;
 static int nextobj=0;		// next object to recycle if num==NUM
 static dWorldID world;
 static dSpaceID space;
-static MyObject obj[NUM];
+//static MyObject obj[NUM];
+// static
+std::vector<MyObject> obj;
 static dJointGroupID contactgroup;
 static int selected = -1;	// selected object
 static int show_aabb = 0;	// show geom AABBs?
@@ -341,8 +343,6 @@ static int fbnum=0;
 
 // Return the spherical angles that correspond to the matrix R (of a rod that started aligned with the z axis)
 std::vector<float> sphericalAnglesFromR(const dMatrix3 R, bool print) {
-  // There are better ways to do this but w/e
-
   std::vector<float> sphericalAngles;
   dVector3 initial, final;
   initial[2] = 1;
@@ -445,7 +445,6 @@ static void start()
   printf ("   x for 50 capsules.\n");
   printf ("To select an object, press space.\n");
   printf ("To unselect objects, press u.\n");
-  printf ("To dump transformation data for the selected object, press p.\n");
   printf ("To toggle showing the geom AABBs, press a.\n");
   printf ("To toggle showing the contact points, press t.\n");
   printf ("To save the current state to 'state.dif', press 1.\n");
@@ -466,7 +465,7 @@ char locase (char c)
   else return c;
 }
 
-bool drop(void) {
+void drop(void) {
     size_t i;
     int j,k;
     dReal sides[3];
@@ -485,19 +484,24 @@ bool drop(void) {
 
       // destroy the body and geoms for slot i // this is useful for later. removing objects.
       dBodyDestroy (obj[i].body);
-      for (k=0; k < GPB; k++) {
-        if (obj[i].geom[k]) dGeomDestroy (obj[i].geom[k]);
-      }
+//      for (k=0; k < GPB; k++) {
+//        if (obj[i].geom[k]) dGeomDestroy (obj[i].geom[k]);
+//      }
+      if (obj[i].geom) dGeomDestroy (obj[i].geom);
       memset (&obj[i], 0, sizeof(obj[i]));
     }
 
-    obj[i].body = dBodyCreate (world);
+    assert(i == obj.size());
+
+    MyObject new_obj;
+
+    new_obj.body = dBodyCreate (world);
     for (k=0; k<3; k++) sides[k] = dRandReal()*0.5+0.1;
 
     dMatrix3 R;
 
     // drops capsules from positions within [-1..1, -1..1, 2..3]
-    dBodySetPosition (obj[i].body,
+    dBodySetPosition (new_obj.body,
                       dRandReal()*2-1,dRandReal()*2-1,dRandReal()+2);
 
     // all orientations uniformly /***/
@@ -509,21 +513,27 @@ bool drop(void) {
     dRFromAxisAndAngle (R, sin(xy_angle)*sin(h_angle), cos(xy_angle)*
                         sin(h_angle), cos(h_angle),r_angle);
 
-    dBodySetRotation (obj[i].body, R);
+    dBodySetRotation (new_obj.body, R);
 
-    dBodySetData (obj[i].body,(void*) i);
+    dBodySetData (new_obj.body,(void*) i);
 
     dMassSetCapsule (&m,DENSITY,3, rad, rad * AR);
-    obj[i].geom[0] = dCreateCapsule (space, rad, rad * AR);
+    new_obj.geom = dCreateCapsule (space, rad, rad * AR);
 
-    if (!setBody)
-      for (k=0; k < GPB; k++) {
-        if (obj[i].geom[k]) dGeomSetBody (obj[i].geom[k],obj[i].body);
-      }
+    if (!setBody) {
+        if (new_obj.geom) {
+            dGeomSetBody(new_obj.geom, new_obj.body);
+        }
+    }
+//      for (k=0; k < GPB; k++) {
+//        if (new_obj.geom[k]) dGeomSetBody (new_obj.geom[k],new_obj.body);
+//      }
 
-    dBodySetMass (obj[i].body,&m);
+    dBodySetMass (new_obj.body, &m);
 
-    return true;
+    obj.push_back(new_obj);
+
+    return;
 }
 
 bool CheckStable(int rodInd) {
@@ -533,9 +543,9 @@ bool CheckStable(int rodInd) {
     dContact contact_array[num];
     float contactPos[num][3];
     int num_contacts = 0;
-    dGeomID g0 = obj[rodInd].geom[0];
+    dGeomID g0 = obj[rodInd].geom;
     for (int j = 0; j < num; j++) {
-      dGeomID g1 = obj[j].geom[0];
+      dGeomID g1 = obj[j].geom;
       int numc = dCollide(g0, g1, MAX_CONTACTS, &contact_array[0].geom, sizeof(dContact));
       //assert(numc < 2); // technically 2 cylinders can only collide in one location. but numerical error sometimes reports two. in which case we'll only take the first collision.
       if (numc > 0) {
@@ -699,8 +709,8 @@ static void command (int cmd)
     // check all collisions between num x num objects
     for (i = 0; i < num; i ++){
       for (j = 0; j < num; j ++){
-        dGeomID g1 = obj[i].geom[0];
-        dGeomID g2 = obj[j].geom[0];
+        dGeomID g1 = obj[i].geom;
+        dGeomID g2 = obj[j].geom;
 
         totalc += dCollide (g1,g2,MAX_CONTACTS,&contact[0].geom,
                             sizeof(dContact));
@@ -731,9 +741,9 @@ static void command (int cmd)
       // get contacts
       dContact contact_array[num];
       int num_contacts = 0;
-      dGeomID g0 = obj[selected].geom[0];
+      dGeomID g0 = obj[selected].geom;
       for (j = 0; j < num; j++) {
-        dGeomID g1 = obj[j].geom[0];
+        dGeomID g1 = obj[j].geom;
         if (dCollide(g0, g1, MAX_CONTACTS, &contact_array[0].geom, sizeof(dContact)) > 0) {
           num_contacts++;
         }
@@ -807,8 +817,8 @@ static void command (int cmd)
   }
   else if (cmd == 'p' && selected >= 0)
   {
-    const dReal* pos = dGeomGetPosition(obj[selected].geom[0]);
-    std::vector<float> angles = sphericalAnglesFromR(dGeomGetRotation(obj[selected].geom[0]), false);
+    const dReal* pos = dGeomGetPosition(obj[selected].geom);
+    std::vector<float> angles = sphericalAnglesFromR(dGeomGetRotation(obj[selected].geom), false);
     // const dReal* rot = dGeomGetRotation(obj[selected].geom[0]);
     printf("Object %d:\n", selected);
     printf("\tposition:\t[%f, %f, %f]\n", pos[0], pos[1], pos[2]);
@@ -828,7 +838,6 @@ static void command (int cmd)
 
 
 // draw a geom
-
 void drawGeom (dGeomID g, const dReal *pos, const dReal *R, int show_aabb)
 {
   int i;
@@ -923,15 +932,24 @@ static void simLoop (int pause)
   dsSetColor (1,1,0);
   dsSetTexture (DS_WOOD);
   for (int i=0; i<num; i++) {
-    for (int j=0; j < GPB; j++) {
+
       if (i==selected) {
-        dsSetColor (0,0.7,1);
+          dsSetColor (0,0.7,1);
       }
       else {
-        dsSetColor (1,1,0);
+          dsSetColor (1,1,0);
       }
-      drawGeom (obj[i].geom[j],0,0,show_aabb);
-    }
+      drawGeom (obj[i].geom,0,0,show_aabb);
+
+//    for (int j=0; j < GPB; j++) {
+//      if (i==selected) {
+//        dsSetColor (0,0.7,1);
+//      }
+//      else {
+//        dsSetColor (1,1,0);
+//      }
+//      drawGeom (obj[i].geom[j],0,0,show_aabb);
+//    }
   }
 }
 
@@ -974,7 +992,8 @@ int main (int argc, char **argv)
   dWorldSetContactMaxCorrectingVel (world,0.1);
   dWorldSetContactSurfaceLayer (world,0.001);
   dCreatePlane (space,0,0,1,0);
-  memset (obj,0,sizeof(obj));
+  // memset (obj,0,sizeof(obj));
+    obj.clear();
 
   dThreadingImplementationID threading = dThreadingAllocateMultiThreadedImplementation();
   dThreadingThreadPoolID pool = dThreadingAllocateThreadPool(4, 0, dAllocateFlagBasicData, NULL);
