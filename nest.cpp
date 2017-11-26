@@ -366,9 +366,10 @@ std::vector<float> sphericalAnglesFromR(const dMatrix3 R, bool print) {
 // Delete an object.
 void removeObject(int index) {
     dBodyDestroy (obj[index].body);
-    for (int k = 0; k < GPB; k++) {
-        if (obj[index].geom[k]) dGeomDestroy(obj[index].geom[k]);
-    }
+    if (obj[index].geom) dGeomDestroy(obj[index].geom);
+//    for (int k = 0; k < GPB; k++) {
+//        if (obj[index].geom[k]) dGeomDestroy(obj[index].geom[k]);
+//    }
     memset(&obj[index], 0, sizeof(obj[index]));
 }
 
@@ -711,8 +712,8 @@ static void command (int cmd)
         // check all collisions between num x num objects
         for (i = 0; i < num; i ++){
             for (j = 0; j < num; j ++){
-                dGeomID g1 = obj[i].geom[0];
-                dGeomID g2 = obj[j].geom[0];
+                dGeomID g1 = obj[i].geom;
+                dGeomID g2 = obj[j].geom;
 
                 totalc += dCollide (g1,g2,MAX_CONTACTS,&contact[0].geom,
                                     sizeof(dContact));
@@ -743,9 +744,9 @@ static void command (int cmd)
             // get contacts
             dContact contact_array[num];
             int num_contacts = 0;
-            dGeomID g0 = obj[selected].geom[0];
+            dGeomID g0 = obj[selected].geom;
             for (j = 0; j < num; j++) {
-                dGeomID g1 = obj[j].geom[0];
+                dGeomID g1 = obj[j].geom;
                 if (dCollide(g0, g1, MAX_CONTACTS, &contact_array[0].geom, sizeof(dContact)) > 0) {
                     num_contacts++;
                 }
@@ -823,8 +824,8 @@ static void command (int cmd)
     }
     else if (cmd == 'p' && selected >= 0)
     {
-        const dReal* pos = dGeomGetPosition(obj[selected].geom[0]);
-        std::vector<float> angles = sphericalAnglesFromR(dGeomGetRotation(obj[selected].geom[0]), false);
+        const dReal* pos = dGeomGetPosition(obj[selected].geom);
+        std::vector<float> angles = sphericalAnglesFromR(dGeomGetRotation(obj[selected].geom), false);
         printf("Object %d:\n", selected);
         printf("\tposition:\t[%f, %f, %f]\n", pos[0], pos[1], pos[2]);
         printf("\trotation:\t[%f, %f]\t\t(theta, phi)\n\n",
