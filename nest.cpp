@@ -68,7 +68,7 @@ std::vector<T> sortVectorBy(const std::vector<T> vec1,
 
     struct comparator {
         static bool compare(const std::vector<T> &pair1,
-                        const std::vector<T> &pair2) {
+                            const std::vector<T> &pair2) {
             return pair1[1] < pair2[1];
         }
     };
@@ -149,11 +149,11 @@ std::vector< std::pair<float, float> > processRanges(std::vector< std::pair<floa
         else {
             assert(thets.second <= 4 * M_PI);
             // if the range is so large it encompasses all of s1, then just one range is enough.
-//            if (thets.second >= 4*M_PI){
-//                printf("*************RANGE_END > 4PI\n\n");
-//                res.push_back(std::pair<float,float>(0, 2*M_PI - .00001));
-//                return res;
-//            }
+            //            if (thets.second >= 4*M_PI){
+            //                printf("*************RANGE_END > 4PI\n\n");
+            //                res.push_back(std::pair<float,float>(0, 2*M_PI - .00001));
+            //                return res;
+            //            }
             // split range into two pieces.
             res.push_back(std::pair<float,float>
                           (thets.first, 2 * M_PI));
@@ -234,54 +234,54 @@ std::vector< std::pair<float, float> > getFreeAngles(std::vector<float> theta, i
     return res;
 }
 
-
-//<---- Convex Object
-dReal planes[]= // planes for a cube, these should coincide with the face array
-{
-  1.0f ,0.0f ,0.0f ,0.25f,
-  0.0f ,1.0f ,0.0f ,0.25f,
-  0.0f ,0.0f ,1.0f ,0.25f,
-  -1.0f,0.0f ,0.0f ,0.25f,
-  0.0f ,-1.0f,0.0f ,0.25f,
-  0.0f ,0.0f ,-1.0f,0.25f
-  /*
-   1.0f ,0.0f ,0.0f ,2.0f,
-   0.0f ,1.0f ,0.0f ,1.0f,
-   0.0f ,0.0f ,1.0f ,1.0f,
-   0.0f ,0.0f ,-1.0f,1.0f,
-   0.0f ,-1.0f,0.0f ,1.0f,
-   -1.0f,0.0f ,0.0f ,0.0f
-   */
-};
-const unsigned int planecount=6;
-
-dReal points[]= // points for a cube
-{
-  0.25f,0.25f,0.25f,  //  point 0
-  -0.25f,0.25f,0.25f, //  point 1
-
-  0.25f,-0.25f,0.25f, //  point 2
-  -0.25f,-0.25f,0.25f,//  point 3
-
-  0.25f,0.25f,-0.25f, //  point 4
-  -0.25f,0.25f,-0.25f,//  point 5
-
-  0.25f,-0.25f,-0.25f,//  point 6
-  -0.25f,-0.25f,-0.25f,// point 7
-};
-const unsigned int pointcount=8;
-unsigned int polygons[] = //Polygons for a cube (6 squares)
-{
-  4,0,2,6,4, // positive X
-  4,1,0,4,5, // positive Y
-  4,0,1,3,2, // positive Z
-  4,3,1,5,7, // negative X
-  4,2,3,7,6, // negative Y
-  4,5,4,6,7, // negative Z
-};
-//----> Convex Object
-
-// select correct drawing functions
+//
+////<---- Convex Object
+//dReal planes[]= // planes for a cube, these should coincide with the face array
+//{
+//  1.0f ,0.0f ,0.0f ,0.25f,
+//  0.0f ,1.0f ,0.0f ,0.25f,
+//  0.0f ,0.0f ,1.0f ,0.25f,
+//  -1.0f,0.0f ,0.0f ,0.25f,
+//  0.0f ,-1.0f,0.0f ,0.25f,
+//  0.0f ,0.0f ,-1.0f,0.25f
+//  /*
+//   1.0f ,0.0f ,0.0f ,2.0f,
+//   0.0f ,1.0f ,0.0f ,1.0f,
+//   0.0f ,0.0f ,1.0f ,1.0f,
+//   0.0f ,0.0f ,-1.0f,1.0f,
+//   0.0f ,-1.0f,0.0f ,1.0f,
+//   -1.0f,0.0f ,0.0f ,0.0f
+//   */
+//};
+//const unsigned int planecount=6;
+//
+//dReal points[]= // points for a cube
+//{
+//  0.25f,0.25f,0.25f,  //  point 0
+//  -0.25f,0.25f,0.25f, //  point 1
+//
+//  0.25f,-0.25f,0.25f, //  point 2
+//  -0.25f,-0.25f,0.25f,//  point 3
+//
+//  0.25f,0.25f,-0.25f, //  point 4
+//  -0.25f,0.25f,-0.25f,//  point 5
+//
+//  0.25f,-0.25f,-0.25f,//  point 6
+//  -0.25f,-0.25f,-0.25f,// point 7
+//};
+//const unsigned int pointcount=8;
+//unsigned int polygons[] = //Polygons for a cube (6 squares)
+//{
+//  4,0,2,6,4, // positive X
+//  4,1,0,4,5, // positive Y
+//  4,0,1,3,2, // positive Z
+//  4,3,1,5,7, // negative X
+//  4,2,3,7,6, // negative Y
+//  4,5,4,6,7, // negative Z
+//};
+////----> Convex Object
+//
+//// select correct drawing functions
 
 #ifdef dDOUBLE
 #define dsDrawBox dsDrawBoxD
@@ -303,14 +303,13 @@ unsigned int polygons[] = //Polygons for a cube (6 squares)
 #define USE_GEOM_OFFSET 1
 
 // dynamics and collision objects
-
 struct MyObject {
-  dBodyID body;			// the body
-  dGeomID geom;		// geometries representing this body
+    dBodyID body;			// the body
+    dGeomID geom;		// geometries representing this body
 };
 
 static int num=0;		// number of objects in simulation
-static int num_stable = 0;
+static int num_stable = 0; // updated when 'v' is run
 static int nextobj=0;		// next object to recycle if num==NUM
 static dWorldID world;
 static dSpaceID space;
@@ -332,8 +331,8 @@ float rad = .03; // rod radius
 int AR = 50; // rod aspect ratio
 
 struct MyFeedback {
-  dJointFeedback fb;
-  bool first;
+    dJointFeedback fb;
+    bool first;
 };
 static int doFeedback=0;
 static MyFeedback feedbacks[MAX_FEEDBACKNUM];
@@ -343,91 +342,99 @@ static int fbnum=0;
 
 // Return the spherical angles that correspond to the matrix R (of a rod that started aligned with the z axis)
 std::vector<float> sphericalAnglesFromR(const dMatrix3 R, bool print) {
-  std::vector<float> sphericalAngles;
-  dVector3 initial, final;
-  initial[2] = 1;
-  float theta;
-  float phi;
+    std::vector<float> sphericalAngles;
+    dVector3 initial, final;
+    initial[2] = 1;
+    float theta, phi;
 
-  dMultiply0_331(final, R, initial);
+    dMultiply0_331(final, R, initial);
 
-  theta = acos(final[2]);
-  sphericalAngles.push_back(theta);
+    theta = acos(final[2]);
+    sphericalAngles.push_back(theta);
 
-  phi = atan(final[1] / final[0]);
-  sphericalAngles.push_back(phi);
+    phi = atan(final[1] / final[0]);
+    sphericalAngles.push_back(phi);
 
-  if (print) {
-    fprintf(fp, "theta: %f\n", theta);
-    fprintf(fp, "phi:   %f\n", phi);
-  }
+    if (print) {
+        fprintf(fp, "theta: %f\n", theta);
+        fprintf(fp, "phi:   %f\n", phi);
+    }
 
-  return sphericalAngles;
+    return sphericalAngles;
+}
+
+// Delete an object.
+void removeObject(int index) {
+    dBodyDestroy (obj[index].body);
+    for (int k = 0; k < GPB; k++) {
+        if (obj[index].geom[k]) dGeomDestroy(obj[index].geom[k]);
+    }
+    memset(&obj[index], 0, sizeof(obj[index]));
 }
 
 // this is called by dSpaceCollide when two objects in space are
 // potentially colliding.
 static void nearCallback (void *data, dGeomID o1, dGeomID o2)
 {
-  int i;
-  // if (o1->body && o2->body) return;
+    int i;
+    // if (o1->body && o2->body) return;
 
-  // this part confirms that position is in the center of the rod
+    // this part confirms that position is in the center of the rod
 
-  /*
-  int interestedInd = selected > -1 ? selected : 0;
-  dVector3 pos;
-  dMatrix3 R;
-  float halflen = AR*rad/2;
-  dBodyCopyPosition(obj[interestedInd].body, pos);
-  dBodyCopyRotation(obj[interestedInd].body, R);
-  dMatrix3 RI2; dRSetIdentity (RI2); const dReal ss2[3] = {0.1,0.1,0.1};
-  dsDrawBox (pos,RI2,ss2);
+    /*
+     int interestedInd = selected > -1 ? selected : 0;
+     dVector3 pos;
+     dMatrix3 R;
+     float halflen = AR*rad/2;
+     dBodyCopyPosition(obj[interestedInd].body, pos);
+     dBodyCopyRotation(obj[interestedInd].body, R);
+     dMatrix3 RI2; dRSetIdentity (RI2); const dReal ss2[3] = {0.1,0.1,0.1};
+     dsDrawBox (pos,RI2,ss2);
 
-  dVector3 point; point[0]=0; point[1]=0; point[2] = halflen; //halflen ;
-  dVector3 out;
-  dMultiply0_331 (out,R,point);
-  out[0]+=pos[0];
-  out[1]+=pos[1];
-  out[2]+=pos[2];
-  dsDrawBox (out,RI2,ss2);
-    */
+     dVector3 point; point[0]=0; point[1]=0; point[2] = halflen; //halflen ;
+     dVector3 out;
+     dMultiply0_331 (out,R,point);
+     out[0]+=pos[0];
+     out[1]+=pos[1];
+     out[2]+=pos[2];
+     dsDrawBox (out,RI2,ss2);
+     */
 
-  // exit without doing anything if the two bodies are connected by a joint
-  dBodyID b1 = dGeomGetBody(o1);
-  dBodyID b2 = dGeomGetBody(o2);
-  if (b1 && b2 && dAreConnectedExcluding (b1,b2,dJointTypeContact)) return;
+    // exit without doing anything if the two bodies are connected by a joint
+    dBodyID b1 = dGeomGetBody(o1);
+    dBodyID b2 = dGeomGetBody(o2);
+    if (b1 && b2 && dAreConnectedExcluding (b1,b2,dJointTypeContact)) return;
 
-  dContact contact[MAX_CONTACTS];   // up to MAX_CONTACTS contacts per box-box
-  for (i=0; i<MAX_CONTACTS; i++) {
-    contact[i].surface.mode = dContactBounce | dContactSoftCFM;
-    contact[i].surface.mu = dInfinity;
-    contact[i].surface.mu2 = 0;
-    contact[i].surface.bounce = 0.1;
-    contact[i].surface.bounce_vel = 0.1;
-    contact[i].surface.soft_cfm = 0.01;
-  }
-  if (int numc = dCollide (o1,o2,MAX_CONTACTS,&contact[0].geom,
-                           sizeof(dContact))) {
-    dMatrix3 RI;
-    dRSetIdentity (RI);
-    const dReal ss[3] = {0.02,0.02,0.02};
-    for (i=0; i<numc; i++) {
-      dJointID c = dJointCreateContact (world,contactgroup,contact+i);
-      dJointAttach (c,b1,b2);
-      if (show_contacts) dsDrawBox (contact[i].geom.pos,RI,ss);
-
-      if (doFeedback && (b1==obj[selected].body || b2==obj[selected].body))
-      {
-        if (fbnum<MAX_FEEDBACKNUM)
-        {
-          feedbacks[fbnum].first = b1==obj[selected].body;
-          dJointSetFeedback (c,&feedbacks[fbnum++].fb);
-        }
-        else fbnum++;
-      }
+    dContact contact[MAX_CONTACTS];   // up to MAX_CONTACTS contacts per box-box
+    for (i=0; i<MAX_CONTACTS; i++) {
+        contact[i].surface.mode = dContactBounce | dContactSoftCFM;
+        contact[i].surface.mu = dInfinity;
+        contact[i].surface.mu2 = 0;
+        contact[i].surface.bounce = 0.1;
+        contact[i].surface.bounce_vel = 0.1;
+        contact[i].surface.soft_cfm = 0.01;
     }
-  }
+    if (int numc = dCollide (o1,o2,MAX_CONTACTS,&contact[0].geom,
+                             sizeof(dContact))) {
+        dMatrix3 RI;
+        dRSetIdentity (RI);
+        const dReal ss[3] = {0.02,0.02,0.02};
+        for (i=0; i<numc; i++) {
+            dJointID c = dJointCreateContact (world,contactgroup,contact+i);
+            dJointAttach (c,b1,b2);
+            if (show_contacts) dsDrawBox (contact[i].geom.pos,RI,ss);
+
+            if (doFeedback && (b1==obj[selected].body || b2==obj[selected].body))
+            {
+                if (fbnum<MAX_FEEDBACKNUM)
+                {
+                    feedbacks[fbnum].first = b1==obj[selected].body;
+                    dJointSetFeedback (c,&feedbacks[fbnum++].fb);
+                }
+                else fbnum++;
+            }
+        }
+    }
 }
 
 
@@ -461,8 +468,8 @@ static void start()
 
 char locase (char c)
 {
-  if (c >= 'A' && c <= 'Z') return c - ('a'-'A');
-  else return c;
+    if (c >= 'A' && c <= 'Z') return c - ('a'-'A');
+    else return c;
 }
 
 void drop(void) {
@@ -474,8 +481,8 @@ void drop(void) {
 
     // Create and drop a rod.
     if (num < NUM) {
-      i = num;
-      num++;
+        i = num;
+        num++;
     }
     else {
       i = nextobj;
@@ -488,7 +495,7 @@ void drop(void) {
 //        if (obj[i].geom[k]) dGeomDestroy (obj[i].geom[k]);
 //      }
       if (obj[i].geom) dGeomDestroy (obj[i].geom);
-      memset (&obj[i], 0, sizeof(obj[i]));
+      memset (&obj[i], 0, sizeof(obj[i])); /****/
     }
 
     assert(i == obj.size());
@@ -504,7 +511,7 @@ void drop(void) {
     dBodySetPosition (new_obj.body,
                       dRandReal()*2-1,dRandReal()*2-1,dRandReal()+2);
 
-    // all orientations uniformly /***/
+    // all orientations uniformly
     float xy_angle = dRandReal() * 2 * M_PI;
     float h_angle = dRandReal() * 2 * M_PI;
     float r_angle = dRandReal() * 2 * M_PI;
@@ -598,47 +605,47 @@ bool CheckStable(int rodInd) {
     fprintf(fp, "\n");
 
     // parametrize contact locations by l and theta, dist from start, and angle relative to y axis.
- /*   std::vector<float*> ltheta;
-    ltheta.clear();
-    float theta[num_contacts];
-    for(int i = 0; i < num_contacts; i++) {
-        // recenter
-        contactPos[i][0] -= start[0];
-        contactPos[i][1] -= start[1];
-        contactPos[i][2] -= start[2];
-        // reorient
-        dVector3 rotCont;
-        dMultiply0_331(rotCont, Rt, contactPos[i]);
+    /*   std::vector<float*> ltheta;
+     ltheta.clear();
+     float theta[num_contacts];
+     for(int i = 0; i < num_contacts; i++) {
+     // recenter
+     contactPos[i][0] -= start[0];
+     contactPos[i][1] -= start[1];
+     contactPos[i][2] -= start[2];
+     // reorient
+     dVector3 rotCont;
+     dMultiply0_331(rotCont, Rt, contactPos[i]);
 
-        // calculate l and theta relative to y axis
-        float * lthet = (float *)malloc(sizeof(float)*2);
-        lthet[0] = rotCont[2];
-        // float angle =
-        // while(angle < 0) {angle += 2*M_PI;} angle = fmod(angle, 2*M_PI);
-        lthet[1] = atan2(rotCont[1], rotCont[0]); //angle;
-        ltheta.push_back(lthet);
-    }
-    std::sort(ltheta.begin(), ltheta.end(), orderbyfloat2);
-    // fprintf(fp,"--- thetabegin\n");
-    fprintf(fp, "\tthetas: ");
-    for(int i = 0; i < num_contacts; i++){
-        // recenter angles and assert necessary conditions
-        theta[i] = (ltheta.at(i))[1] - (ltheta.at(0))[1];
-        while(theta[i] < 0) {theta[i] += 8*M_PI;} theta[i] = fmod(theta[i], 2*M_PI);
-        assert(theta[i] == theta[i]); // catch any nans. they pollute the batch.
-        assert(theta[i] >= 0);
-        fprintf(fp, "%f\t", theta[i]);
-    }
-    fprintf(fp, "\n");
-  // fprintf(fp,"\n--- thetaend\n");
-*/
+     // calculate l and theta relative to y axis
+     float * lthet = (float *)malloc(sizeof(float)*2);
+     lthet[0] = rotCont[2];
+     // float angle =
+     // while(angle < 0) {angle += 2*M_PI;} angle = fmod(angle, 2*M_PI);
+     lthet[1] = atan2(rotCont[1], rotCont[0]); //angle;
+     ltheta.push_back(lthet);
+     }
+     std::sort(ltheta.begin(), ltheta.end(), orderbyfloat2);
+     // fprintf(fp,"--- thetabegin\n");
+     fprintf(fp, "\tthetas: ");
+     for(int i = 0; i < num_contacts; i++){
+     // recenter angles and assert necessary conditions
+     theta[i] = (ltheta.at(i))[1] - (ltheta.at(0))[1];
+     while(theta[i] < 0) {theta[i] += 8*M_PI;} theta[i] = fmod(theta[i], 2*M_PI);
+     assert(theta[i] == theta[i]); // catch any nans. they pollute the batch.
+     assert(theta[i] >= 0);
+     fprintf(fp, "%f\t", theta[i]);
+     }
+     fprintf(fp, "\n");
+     // fprintf(fp,"\n--- thetaend\n");
+     */
     // calculate stability
-/*    for (int i = 0; i < num_contacts; i++)
-    {
-        free(ltheta.at(i)); // free unused memory.
-        float dt = theta[(i+1)%num_contacts]-theta[i];
-        if(std::abs(dt) > M_PI){ return false; } // a angle difference anywhere of more than pi means the rod can move in that dir.
-    } */
+    /*    for (int i = 0; i < num_contacts; i++)
+     {
+     free(ltheta.at(i)); // free unused memory.
+     float dt = theta[(i+1)%num_contacts]-theta[i];
+     if(std::abs(dt) > M_PI){ return false; } // a angle difference anywhere of more than pi means the rod can move in that dir.
+     } */
 
     // Make a (deep) copy of the angles and sort the copy.
     std::vector<float> sorted_theta = theta;
@@ -675,212 +682,197 @@ bool CheckStable(int rodInd) {
 // called when a key pressed
 static void command (int cmd)
 {
-  size_t i;
-  int j,k;
-  dReal sides[3];
-  dMass m;
-  int setBody;
+    int i, j, k;
+    cmd = locase(cmd);
 
-  cmd = locase (cmd);
-
-  // utility function
-  if (cmd == 'z') {
-      fprintf(fp, "Number of objects: %d\n", num);
-      fprintf(fp, "Number of stable objects: %d\n", num_stable);
-      return;
-  }
-
-  // check all collisions
-  if (cmd == 'w')
-  {
-    dContact contact[MAX_CONTACTS];   // up to MAX_CONTACTS contacts per box-box
-    for (i=0; i<MAX_CONTACTS; i++) {
-      contact[i].surface.mode = dContactBounce | dContactSoftCFM;
-      contact[i].surface.mu = dInfinity;
-      contact[i].surface.mu2 = 0;
-      contact[i].surface.bounce = 0.1;
-      contact[i].surface.bounce_vel = 0.1;
-      contact[i].surface.soft_cfm = 0.01;
+    // utility function
+    if (cmd == 'z') {
+        fprintf(fp, "Number of objects: %d\n", num);
+        fprintf(fp, "Number of stable objects: %d\n", num_stable);
+        return;
     }
 
-    int totalc = 0; // total number of contacts
-    fprintf(fp, "num objs %d\n", num);
-
-    // check all collisions between num x num objects
-    for (i = 0; i < num; i ++){
-      for (j = 0; j < num; j ++){
-        dGeomID g1 = obj[i].geom;
-        dGeomID g2 = obj[j].geom;
-
-        totalc += dCollide (g1,g2,MAX_CONTACTS,&contact[0].geom,
-                            sizeof(dContact));
-      }
-    }
-    // doublecounting collisions should always be even number
-    assert(totalc%2==0);
-    totalc/=2;
-
-    if (totalc >= maxNumContactsSimulated )
+    // check all collisions
+    else if (cmd == 'w')
     {
-      maxNumContactsSimulated = totalc;
-      fprintf(fp, "numContacts %d   maxcontacts %d \n\n", totalc, maxNumContactsSimulated);
-    }
-  }
-
-  // Check collisions for selected object
-  if (cmd == 'q') {
-    if (selected >= 0) {
-      fprintf(fp, "\tselected object: %d\n", selected);
-
-      // print object info (position, orientation, etc.)
-      dVector3 pos;
-      dMatrix3 R;
-      dBodyCopyPosition(obj[selected].body, pos);
-      dBodyCopyRotation(obj[selected].body, R);
-
-      // get contacts
-      dContact contact_array[num];
-      int num_contacts = 0;
-      dGeomID g0 = obj[selected].geom;
-      for (j = 0; j < num; j++) {
-        dGeomID g1 = obj[j].geom;
-        if (dCollide(g0, g1, MAX_CONTACTS, &contact_array[0].geom, sizeof(dContact)) > 0) {
-          num_contacts++;
+        dContact contact[MAX_CONTACTS];   // up to MAX_CONTACTS contacts per box-box
+        for (i=0; i<MAX_CONTACTS; i++) {
+            contact[i].surface.mode = dContactBounce | dContactSoftCFM;
+            contact[i].surface.mu = dInfinity;
+            contact[i].surface.mu2 = 0;
+            contact[i].surface.bounce = 0.1;
+            contact[i].surface.bounce_vel = 0.1;
+            contact[i].surface.soft_cfm = 0.01;
         }
-      }
 
-      fprintf(fp, "num contacts: %d\n\n", num_contacts);
+        int totalc = 0; // total number of contacts
+        fprintf(fp, "num objs %d\n", num);
+
+        // check all collisions between num x num objects
+        for (i = 0; i < num; i ++){
+            for (j = 0; j < num; j ++){
+                dGeomID g1 = obj[i].geom[0];
+                dGeomID g2 = obj[j].geom[0];
+
+                totalc += dCollide (g1,g2,MAX_CONTACTS,&contact[0].geom,
+                                    sizeof(dContact));
+            }
+        }
+        // doublecounting collisions should always be even number
+        assert(totalc%2==0);
+        totalc/=2;
+
+        if (totalc >= maxNumContactsSimulated )
+        {
+            maxNumContactsSimulated = totalc;
+            fprintf(fp, "numContacts %d   maxcontacts %d \n\n", totalc, maxNumContactsSimulated);
+        }
     }
-  }
-  // Find if any rod is stable.
-  else if(cmd == 'v')
-  {
-      num_stable = 0;
-      for (int i = 0; i < num; i++) {
-          bool isStable = CheckStable(i);
-          if (isStable) {
-              fprintf(fp, "\t**************** Stable rod found! %d ****************\n", i);
-              num_stable++;
-          }
-      }
 
-      fprintf(fp, "Number of stable/total objects: %d/%d\n", num_stable, num);
-  }
+    // Check collisions for selected object
+    else if (cmd == 'q') {
+        if (selected >= 0) {
+            fprintf(fp, "\tselected object: %d\n", selected);
 
-  // Check if the selected rod is stable.
-  else if (cmd == 'b') {
-      if (selected >= 0) { CheckStable(selected); }
-  }
+            // print object info (position, orientation, etc.)
+            dVector3 pos;
+            dMatrix3 R;
+            dBodyCopyPosition(obj[selected].body, pos);
+            dBodyCopyRotation(obj[selected].body, R);
 
-  // Drop a capsule (spherocylinder)
-  else if (cmd == 'c') {
-      drop();
-  }
+            // get contacts
+            dContact contact_array[num];
+            int num_contacts = 0;
+            dGeomID g0 = obj[selected].geom[0];
+            for (j = 0; j < num; j++) {
+                dGeomID g1 = obj[j].geom[0];
+                if (dCollide(g0, g1, MAX_CONTACTS, &contact_array[0].geom, sizeof(dContact)) > 0) {
+                    num_contacts++;
+                }
+            }
 
-  // Drop lots of capsules
-  else if (cmd == 'x') {
-      for (j = 0; j < 50; j++) { drop(); }
-  }
-
-  // toggle immobility
-  else if (cmd == 'k') {
-    if (dBodyIsKinematic(obj[0].body) == 0) {
-      for (j = 0; j < num; j++) {
-        dBodySetKinematic(obj[j].body);
-        dBodySetLinearVel(obj[j].body, 0, 0, 0);
-        dBodySetAngularVel(obj[j].body, 0, 0, 0);
-      }
+            fprintf(fp, "num contacts: %d\n\n", num_contacts);
+        }
     }
-    else {
-      for (j = 0; j < num; j++) {
-        dBodySetDynamic(obj[j].body);
-      }
+
+    // Find if any rod is stable.
+    else if(cmd == 'v')
+    {
+        num_stable = 0;
+        for (int i = 0; i < num; i++) {
+            bool isStable = CheckStable(i);
+            if (isStable) {
+                fprintf(fp, "\t**************** Stable rod found! %d ****************\n", i);
+                num_stable++;
+            }
+        }
+
+        fprintf(fp, "Number of stable/total objects: %d/%d\n", num_stable, num);
     }
-  }
 
-  else if (cmd == ' ') {
-    selected++;
-    if (selected >= num) selected = 0;
-    if (selected < 0) selected = 0;
-  }
-  else if (cmd == 'u') {
-    selected = -1;
-  }
-  else if (cmd == 'a') {
-    show_aabb ^= 1;
-  }
-  else if (cmd == 't') {
-    show_contacts ^= 1;
-  }
-  else if (cmd == '1') {
-    write_world = 1;
-  }
-  else if (cmd == 'p' && selected >= 0)
-  {
-    const dReal* pos = dGeomGetPosition(obj[selected].geom);
-    std::vector<float> angles = sphericalAnglesFromR(dGeomGetRotation(obj[selected].geom), false);
-    // const dReal* rot = dGeomGetRotation(obj[selected].geom[0]);
-    printf("Object %d:\n", selected);
-    printf("\tposition:\t[%f, %f, %f]\n", pos[0], pos[1], pos[2]);
-    printf("\trotation:\t[%f, %f]\t\t(theta, phi)\n\n",
-           angles[0], angles[1]);
-    /* printf("ROTATION:\n\t[%f,%f,%f,%f]\n\t[%f,%f,%f,%f]\n\t[%f,%f,%f,%f]\n\n",
-           rot[0],rot[1],rot[2],rot[3],
-           rot[4],rot[5],rot[6],rot[7],
-           rot[8],rot[9],rot[10],rot[11]); */
-  }
-  else if (cmd == 'f' && selected >= 0 && selected < num) {
-    if (dBodyIsEnabled(obj[selected].body))
-      doFeedback = 1;
-  }
+    // Check if the selected rod is stable.
+    else if (cmd == 'b') {
+        if (selected >= 0) { CheckStable(selected); }
+    }
 
+    // Drop a capsule (spherocylinder)
+    else if (cmd == 'c') {
+        drop();
+    }
+
+    // Drop lots of capsules
+    else if (cmd == 'x') {
+        for (j = 0; j < 50; j++) { drop(); }
+    }
+
+    // toggle immobility
+    else if (cmd == 'k') {
+        if (dBodyIsKinematic(obj[0].body) == 0) {
+            for (j = 0; j < num; j++) {
+                dBodySetKinematic(obj[j].body);
+                dBodySetLinearVel(obj[j].body, 0, 0, 0);
+                dBodySetAngularVel(obj[j].body, 0, 0, 0);
+            }
+        }
+        else {
+            for (j = 0; j < num; j++) {
+                dBodySetDynamic(obj[j].body);
+            }
+        }
+    }
+
+    else if (cmd == ' ') {
+        selected++;
+        if (selected >= num) selected = 0;
+        if (selected < 0) selected = 0;
+    }
+    else if (cmd == 'u') {
+        selected = -1;
+    }
+    else if (cmd == 'd') {
+        if (selected >= 0) { removeObject(selected); }
+    }
+    else if (cmd == 'a') {
+        show_aabb ^= 1;
+    }
+    else if (cmd == 't') {
+        show_contacts ^= 1;
+    }
+    else if (cmd == '1') {
+        write_world = 1;
+    }
+    else if (cmd == 'p' && selected >= 0)
+    {
+        const dReal* pos = dGeomGetPosition(obj[selected].geom[0]);
+        std::vector<float> angles = sphericalAnglesFromR(dGeomGetRotation(obj[selected].geom[0]), false);
+        printf("Object %d:\n", selected);
+        printf("\tposition:\t[%f, %f, %f]\n", pos[0], pos[1], pos[2]);
+        printf("\trotation:\t[%f, %f]\t\t(theta, phi)\n\n",
+               angles[0], angles[1]);
+    }
 }
 
 
 // draw a geom
 void drawGeom (dGeomID g, const dReal *pos, const dReal *R, int show_aabb)
 {
-  int i;
+    int i;
 
-  if (!g) return;
-  if (!pos) pos = dGeomGetPosition (g);
-  if (!R) R = dGeomGetRotation (g);
+    if (!g) return;
+    if (!pos) pos = dGeomGetPosition (g);
+    if (!R) R = dGeomGetRotation (g);
 
-  int type = dGeomGetClass (g);
-  if (type == dBoxClass) {
-    dVector3 sides;
-    dGeomBoxGetLengths (g,sides);
-    dsDrawBox (pos,R,sides);
-  }
-  else if (type == dCapsuleClass) {
-    dReal radius,length;
-    dGeomCapsuleGetParams (g,&radius,&length);
-    dsDrawCapsule (pos,R,length,radius);
-  }
+    int type = dGeomGetClass (g);
 
-  if (show_body) {
-    dBodyID body = dGeomGetBody(g);
-    if (body) {
-      const dReal *bodypos = dBodyGetPosition (body);
-      const dReal *bodyr = dBodyGetRotation (body);
-      dReal bodySides[3] = { 0.1, 0.1, 0.1 };
-      dsSetColorAlpha(0,1,0,1);
-      dsDrawBox(bodypos,bodyr,bodySides);
+    if (type == dCapsuleClass) {
+        dReal radius,length;
+        dGeomCapsuleGetParams (g,&radius,&length);
+        dsDrawCapsule (pos,R,length,radius);
     }
-  }
-  if (show_aabb) {
-    // draw the bounding box for this geom
-    dReal aabb[6];
-    dGeomGetAABB (g,aabb);
-    dVector3 bbpos;
-    for (i=0; i<3; i++) bbpos[i] = 0.5*(aabb[i*2] + aabb[i*2+1]);
-    dVector3 bbsides;
-    for (i=0; i<3; i++) bbsides[i] = aabb[i*2+1] - aabb[i*2];
-    dMatrix3 RI;
-    dRSetIdentity (RI);
-    dsSetColorAlpha (1,0,0,0.5);
-    dsDrawBox (bbpos,RI,bbsides);
-  }
+
+    if (show_body) {
+        dBodyID body = dGeomGetBody(g);
+        if (body) {
+            const dReal *bodypos = dBodyGetPosition (body);
+            const dReal *bodyr = dBodyGetRotation (body);
+            dReal bodySides[3] = { 0.1, 0.1, 0.1 };
+            dsSetColorAlpha(0,1,0,1);
+            dsDrawBox(bodypos,bodyr,bodySides);
+        }
+    }
+    if (show_aabb) {
+        // draw the bounding box for this geom
+        dReal aabb[6];
+        dGeomGetAABB (g,aabb);
+        dVector3 bbpos;
+        for (i=0; i<3; i++) bbpos[i] = 0.5*(aabb[i*2] + aabb[i*2+1]);
+        dVector3 bbsides;
+        for (i=0; i<3; i++) bbsides[i] = aabb[i*2+1] - aabb[i*2];
+        dMatrix3 RI;
+        dRSetIdentity (RI);
+        dsSetColorAlpha (1,0,0,0.5);
+        dsDrawBox (bbpos,RI,bbsides);
+    }
 }
 
 
@@ -888,18 +880,18 @@ void drawGeom (dGeomID g, const dReal *pos, const dReal *R, int show_aabb)
 
 static void simLoop (int pause)
 {
-  dsSetColor (0,0,2);
-  dSpaceCollide (space,0,&nearCallback);
-  if (!pause) dWorldQuickStep (world, 0.02);
+    dsSetColor (0,0,2);
+    dSpaceCollide (space,0,&nearCallback);
+    if (!pause) dWorldQuickStep (world, 0.02);
 
-  if (write_world) {
-    FILE *f = fopen ("state.dif","wt");
-    if (f) {
-      dWorldExportDIF (world,f,"X");
-      fclose (f);
+    if (write_world) {
+        FILE *f = fopen ("state.dif","wt");
+        if (f) {
+            dWorldExportDIF (world,f,"X");
+            fclose (f);
+        }
+        write_world = 0;
     }
-    write_world = 0;
-  }
 
 
   if (doFeedback)
@@ -956,35 +948,34 @@ static void simLoop (int pause)
 
 int main (int argc, char **argv)
 {
-  // init global vars /***/
-  maxNumContactsSimulated = 0;
-  fp = stdout;//fopen("output.txt","w");
-  AR = 50;
+    // init global vars /***/
+    maxNumContactsSimulated = 0;
+    fp = stdout;//fopen("output.txt","w");
+    AR = 50;
 
-  // setup pointers to drawstuff callback functions
-  dsFunctions fn;
-  fn.version = DS_VERSION;
-  fn.start = &start;
-  fn.step = &simLoop;
-  fn.command = &command;
-  fn.stop = 0;
-  fn.path_to_textures = DRAWSTUFF_TEXTURE_PATH;
-
-  // create world
-  dInitODE2(0);
-  world = dWorldCreate();
-  space = dHashSpaceCreate (0);
-  contactgroup = dJointGroupCreate (0);
-  dWorldSetGravity (world,0,0,-GRAVITY);
-  dWorldSetCFM (world,1e-5);
-  dWorldSetAutoDisableFlag (world,1);
-
+    // setup pointers to drawstuff callback functions
+    dsFunctions fn;
+    fn.version = DS_VERSION;
+    fn.start = &start;
+    fn.step = &simLoop;
+    fn.command = &command;
+    fn.stop = 0;
+    fn.path_to_textures = DRAWSTUFF_TEXTURE_PATH;
+    
+    // create world
+    dInitODE2(0);
+    world = dWorldCreate();
+    space = dHashSpaceCreate (0);
+    contactgroup = dJointGroupCreate (0);
+    dWorldSetGravity (world,0,0,-GRAVITY);
+    dWorldSetCFM (world,1e-5);
+    dWorldSetAutoDisableFlag (world,1);
+    
 #if 1
-
-  dWorldSetAutoDisableAverageSamplesCount( world, 10 );
-
+    
+    dWorldSetAutoDisableAverageSamplesCount( world, 10 );
+    
 #endif
-
   dWorldSetLinearDamping(world, 0.00001);
   dWorldSetAngularDamping(world, 0.005);
   dWorldSetMaxAngularSpeed(world, 200);
