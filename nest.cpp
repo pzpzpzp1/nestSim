@@ -296,7 +296,7 @@ std::vector< std::pair<float, float> > getFreeAngles(std::vector<float> theta, i
 
 #define NUM 1000			// max number of objects
 #define DENSITY (5.0)		// density of all objects
-#define GPB 3			// maximum number of geometries per body
+//#define GPB 3			// maximum number of geometries per body
 #define MAX_CONTACTS 8          // maximum number of contact points per body
 #define MAX_FEEDBACKNUM 20
 #define GRAVITY         REAL(0.5)
@@ -366,11 +366,18 @@ std::vector<float> sphericalAnglesFromR(const dMatrix3 R, bool print) {
 // Delete an object.
 void removeObject(int index) {
     dBodyDestroy (obj[index].body);
-    if (obj[index].geom) dGeomDestroy(obj[index].geom);
+    if (obj[index].geom) {
+        dGeomDestroy(obj[index].geom);
+        obj.erase(obj.begin() + index);
+    }
+    else {
+        throw std::runtime_error("No geom attached!");
+    }
+    return;
 //    for (int k = 0; k < GPB; k++) {
 //        if (obj[index].geom[k]) dGeomDestroy(obj[index].geom[k]);
 //    }
-    memset(&obj[index], 0, sizeof(obj[index]));
+    // memset(&obj[index], 0, sizeof(obj[index]));
 }
 
 // this is called by dSpaceCollide when two objects in space are
@@ -688,8 +695,8 @@ static void command (int cmd)
 
     // utility function
     if (cmd == 'z') {
-        fprintf(fp, "Number of objects: %d\n", num);
-        fprintf(fp, "Number of stable objects: %d\n", num_stable);
+        fprintf(fp, "num: %d\n", num);
+        fprintf(fp, "Number of objects: %lu\n", obj.size());
         return;
     }
 
@@ -811,7 +818,12 @@ static void command (int cmd)
         selected = -1;
     }
     else if (cmd == 'd') {
-        if (selected >= 0) { removeObject(selected); }
+        if (selected >= 0) {
+            removeObject(selected);
+            printf("Object %d removed.\n", selected);
+            selected = -1;
+            num--;
+        }
     }
     else if (cmd == 'a') {
         show_aabb ^= 1;
