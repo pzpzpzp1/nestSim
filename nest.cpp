@@ -294,7 +294,7 @@ std::vector< std::pair<float, float> > getFreeAngles(std::vector<float> theta, i
 
 // some constants
 
-#define NUM 1000			// max number of objects
+#define NUM 5000			// max number of objects
 #define DENSITY (5.0)		// density of all objects
 //#define GPB 3			// maximum number of geometries per body
 #define MAX_CONTACTS 8          // maximum number of contact points per body
@@ -329,6 +329,8 @@ int maxNumContactsSimulated = 0;
 FILE * fp;
 float rad = .03; // rod radius
 int AR = 50; // rod aspect ratio
+int nwalls = 5; // number of walls. Should be 1 or 5
+dGeomID walls[5]; // wall objects
 
 struct MyFeedback {
     dJointFeedback fb;
@@ -517,7 +519,7 @@ void drop(void) {
 
     // drops capsules from positions within [-1..1, -1..1, 2..3]
     dBodySetPosition (new_obj.body,
-                      dRandReal()*2-1,dRandReal()*2-1,dRandReal()+2);
+                      dRandReal()*2-1,dRandReal()*2-1,dRandReal()+5);
 
     // all orientations uniformly
     float xy_angle = dRandReal() * 2 * M_PI;
@@ -556,17 +558,28 @@ bool CheckStable(int rodInd) {
 
     // get contacts
     dContact contact_array[num];
-    float contactPos[num][3];
+    float contactPos[num+nwalls][3]; // add 5 for colliding with walls and floor
     int num_contacts = 0;
     dGeomID g0 = obj[rodInd].geom;
-    for (int j = 0; j < num; j++) {
-      dGeomID g1 = obj[j].geom;
+    for (int j = 0; j < num + nwalls; j++) {
+      dGeomID g1;
+      if(j < num){
+        g1 = obj[j].geom;
+      }
+      else {
+        g1 = walls[j-num];
+      }
+
       int numc = dCollide(g0, g1, MAX_CONTACTS, &contact_array[0].geom, sizeof(dContact));
       //assert(numc < 2); // technically 2 cylinders can only collide in one location. but numerical error sometimes reports two. in which case we'll only take the first collision.
       if (numc > 0) {
           contactPos[num_contacts][0] = contact_array[0].geom.pos[0];
           contactPos[num_contacts][1] = contact_array[0].geom.pos[1];
           contactPos[num_contacts][2] = contact_array[0].geom.pos[2];
+
+          //if(j >= num){
+          //    fprintf(fp,"found contact with wall: %d\n",j-num);
+          //}
 
           num_contacts++;
       }
@@ -995,7 +1008,9 @@ int main (int argc, char **argv)
 
   dWorldSetContactMaxCorrectingVel (world,0.1);
   dWorldSetContactSurfaceLayer (world,0.001);
-  dCreatePlane (space,0,0,1,0);
+  assert(nwalls == 1 || nwalls == 5); // need floor or floor+sidewalls
+  dGeomID wall_D = dCreatePlane (space,0,0,1,0);
+  walls[0] = wall_D;
   // memset (obj,0,sizeof(obj));
     obj.clear();
 
@@ -1006,10 +1021,17 @@ int main (int argc, char **argv)
   dWorldSetStepThreadingImplementation(world, dThreadingImplementationGetFunctions(threading), threading);
 
   // draw bounding box
-//  dGeomID wall_N = dCreatePlane(space, 0, -1, 0, -2);
-//  dGeomID wall_E = dCreatePlane(space, -1, 0, 0, -2);
-//  dGeomID wall_S = dCreatePlane(space, 0, 1, 0, -2);
-//  dGeomID wall_W = dCreatePlane(space, 1, 0, 0, -2);
+  float bound = rad*AR/2.0+1.001;
+  if(nwalls == 5){
+      dGeomID wall_N = dCreatePlane(space, 0, -1, 0, -bound);
+      dGeomID wall_E = dCreatePlane(space, -1, 0, 0, -bound);
+      dGeomID wall_S = dCreatePlane(space, 0, 1, 0, -bound);
+      dGeomID wall_W = dCreatePlane(space, 1, 0, 0, -bound);
+      walls[1]=wall_N;
+      walls[2]=wall_E;
+      walls[3]=wall_S;
+      walls[4]=wall_W;
+  }
 
   // run simulation
   dsSimulationLoop (argc,argv,800,600,&fn);
