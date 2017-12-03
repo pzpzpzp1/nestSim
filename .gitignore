@@ -4,3 +4,4 @@ nest.o
 Makefile
 nest.Po
 output.txt
+savestate.txt

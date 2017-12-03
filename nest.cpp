@@ -27,6 +27,7 @@
 #include "texturepath.h"
 #include <assert.h>
 #include <vector>
+#include <string>
 #include <cmath>
 #include <iostream>
 #include <algorithm>
@@ -327,6 +328,8 @@ static int show_body = 0;
 // global variables start now
 int maxNumContactsSimulated = 0;
 FILE * fp;
+std::string savefilename = "savestate.txt";
+std::string loadfilename = "savestate.txt";
 float rad = .03; // rod radius
 int AR = 50; // rod aspect ratio
 int nwalls = 5; // number of walls. Should be 1 or 5
@@ -593,6 +596,7 @@ bool CheckStable(int rodInd) {
     dBodyCopyRotation(obj[rodInd].body, R);
 
     // Rt is R transpose which is also the inverse of R
+    // ODE matrices are represented 3x4 though, where the 4th col is useless which is why the transpose indices look wierd
     Rt[0] = R[0]; Rt[5] = R[5]; Rt[10] = R[10];
     Rt[1] = R[4]; Rt[2] = R[8]; Rt[6] = R[9];
     Rt[4] = R[1]; Rt[8] = R[2]; Rt[9] = R[6];
@@ -700,6 +704,85 @@ bool CheckStable(int rodInd) {
     return true;
 }
 
+// Saves with the assumption of constant hardcoded mass, and walls
+void SaveState(std::string filename){
+    FILE * savefile = fopen(filename.c_str(),"w");
+    if(savefile == NULL){
+        fprintf(fp,"Save failed. Unable to open file. Maybe it doesn't exist? %s\n", filename.c_str());
+        return;
+    }
+
+    fprintf(savefile, "numobj %d\n",num);
+    // save radius length position orientation velocity rotationalV
+    for(int i = 0; i < num; i ++)
+    {
+        dVector3 pos;
+        dMatrix3 R, Rt;
+        dBodyCopyPosition(obj[i].body, pos);
+        dBodyCopyRotation(obj[i].body, R);
+        // position rotation radius length
+        fprintf(savefile, "ind %d pos %f %f %f ",i,pos[0],pos[1],pos[2]);
+        fprintf(savefile, "R %f %f %f %f %f %f %f %f %f %f %f %f ",
+                R[0],R[1],R[2],R[3],R[4],R[5],R[6],R[7],R[8],R[9],R[10],R[11]);
+        fprintf(savefile, "Rad %f L %f ",rad,AR*rad);
+        //vel rvel
+        const dReal * lvel = dBodyGetLinearVel(obj[i].body);
+        const dReal * rvel = dBodyGetAngularVel(obj[i].body);
+        fprintf(savefile, "lvel %f %f %f rvel %f %f %f ",lvel[0],lvel[1],lvel[2],rvel[0],rvel[1],rvel[2]);
+        fprintf(savefile, "\n");
+    }
+    fclose(savefile);
+    fprintf(fp,"Save complete: %s\n", filename.c_str());
+}
+
+// Saves with the assumption of constant hardcoded mass, and walls. radius and length in loadifle are actually also ignored.
+void LoadState(std::string filename){
+
+    FILE * loadfile = fopen(filename.c_str(),"r");
+    if(loadfile == NULL){
+        fprintf(fp,"Load failed. Unable to open file. Maybe it doesn't exist? %s\n", filename.c_str());
+        return;
+    }
+
+    fprintf(fp,"Load success. \n");
+    while(num > 0)
+    {
+    //    fprintf(fp,"num %d \n",num);
+        removeObject(0);
+        num --;
+    }
+    fprintf(fp,"Cleared Current capsules. \n");
+
+    dVector3 pos;
+    dMatrix3 R, Rt;
+    float lvl[3];
+    float rvl[3];
+
+    int numobjs, ind;
+    float rad,l;
+    fscanf(loadfile, "numobj %d\n", &numobjs);
+
+    for(int i =0; i<numobjs;i ++)
+    {
+        fscanf(loadfile, "ind %d pos %f %f %f R %f %f %f %f %f %f %f %f %f %f %f %f Rad %f L %f lvel %f %f %f rvel %f %f %f \n",
+               &ind,
+               &(pos[0]),&(pos[1]),&(pos[2]),
+               &(R[0]),&(R[1]),&(R[2]),&(R[3]),&(R[4]),&(R[5]),&(R[6]),&(R[7]),&(R[8]),&(R[9]),&(R[10]),&(R[11]),
+               &rad,&l,
+               &(lvl[0]),&(lvl[1]),&(lvl[2]),
+               &(rvl[0]),&(rvl[1]),&(rvl[2])
+               );
+
+        //fprintf(fp,"dropping loaded rod. %d\n",ind);
+        drop();
+        dBodySetPosition (obj[num-1].body, pos[0],pos[1],pos[2]);
+        dBodySetRotation (obj[num-1].body, R);
+        dBodySetLinearVel(obj[num-1].body, lvl[0],lvl[1],lvl[2]);
+        dBodySetAngularVel(obj[num-1].body, rvl[0],rvl[1],rvl[2]);
+    }
+    fclose(loadfile);
+}
+
 // called when a key pressed
 static void command (int cmd)
 {
@@ -710,6 +793,18 @@ static void command (int cmd)
     if (cmd == 'z') {
         fprintf(fp, "num: %d\n", num);
         fprintf(fp, "Number of objects: %lu\n", obj.size());
+        return;
+    }
+
+    // save current state
+    if (cmd == 'y') {
+        SaveState(savefilename);
+        return;
+    }
+
+    // load previous save state
+    if (cmd == 'e') {
+        LoadState(loadfilename);
         return;
     }
 
@@ -976,7 +1071,7 @@ int main (int argc, char **argv)
 {
     // init global vars /***/
     maxNumContactsSimulated = 0;
-    fp = stdout;//fopen("output.txt","w");
+    fp = stdout;
     AR = 50;
 
     // setup pointers to drawstuff callback functions
