@@ -27,6 +27,7 @@
 #include "texturepath.h"
 #include <assert.h>
 #include <vector>
+#include <string>
 #include <cmath>
 #include <iostream>
 #include <algorithm>
@@ -294,7 +295,7 @@ std::vector< std::pair<float, float> > getFreeAngles(std::vector<float> theta, i
 
 // some constants
 
-#define NUM 1000			// max number of objects
+#define NUM 5000			// max number of objects
 #define DENSITY (5.0)		// density of all objects
 //#define GPB 3			// maximum number of geometries per body
 #define MAX_CONTACTS 8          // maximum number of contact points per body
@@ -327,8 +328,12 @@ static int show_body = 0;
 // global variables start now
 int maxNumContactsSimulated = 0;
 FILE * fp;
+std::string savefilename = "savestate.txt";
+std::string loadfilename = "savestate.txt";
 float rad = .03; // rod radius
 int AR = 50; // rod aspect ratio
+int nwalls = 5; // number of walls. Should be 1 or 5
+dGeomID walls[5]; // wall objects
 
 struct MyFeedback {
     dJointFeedback fb;
@@ -517,7 +522,7 @@ void drop(void) {
 
     // drops capsules from positions within [-1..1, -1..1, 2..3]
     dBodySetPosition (new_obj.body,
-                      dRandReal()*2-1,dRandReal()*2-1,dRandReal()+2);
+                      dRandReal()*2-1,dRandReal()*2-1,dRandReal()+5);
 
     // all orientations uniformly
     float xy_angle = dRandReal() * 2 * M_PI;
@@ -556,17 +561,28 @@ bool CheckStable(int rodInd) {
 
     // get contacts
     dContact contact_array[num];
-    float contactPos[num][3];
+    float contactPos[num+nwalls][3]; // add 5 for colliding with walls and floor
     int num_contacts = 0;
     dGeomID g0 = obj[rodInd].geom;
-    for (int j = 0; j < num; j++) {
-      dGeomID g1 = obj[j].geom;
+    for (int j = 0; j < num + nwalls; j++) {
+      dGeomID g1;
+      if(j < num){
+        g1 = obj[j].geom;
+      }
+      else {
+        g1 = walls[j-num];
+      }
+
       int numc = dCollide(g0, g1, MAX_CONTACTS, &contact_array[0].geom, sizeof(dContact));
       //assert(numc < 2); // technically 2 cylinders can only collide in one location. but numerical error sometimes reports two. in which case we'll only take the first collision.
       if (numc > 0) {
           contactPos[num_contacts][0] = contact_array[0].geom.pos[0];
           contactPos[num_contacts][1] = contact_array[0].geom.pos[1];
           contactPos[num_contacts][2] = contact_array[0].geom.pos[2];
+
+          //if(j >= num){
+          //    fprintf(fp,"found contact with wall: %d\n",j-num);
+          //}
 
           num_contacts++;
       }
@@ -580,6 +596,7 @@ bool CheckStable(int rodInd) {
     dBodyCopyRotation(obj[rodInd].body, R);
 
     // Rt is R transpose which is also the inverse of R
+    // ODE matrices are represented 3x4 though, where the 4th col is useless which is why the transpose indices look wierd
     Rt[0] = R[0]; Rt[5] = R[5]; Rt[10] = R[10];
     Rt[1] = R[4]; Rt[2] = R[8]; Rt[6] = R[9];
     Rt[4] = R[1]; Rt[8] = R[2]; Rt[9] = R[6];
@@ -687,6 +704,85 @@ bool CheckStable(int rodInd) {
     return true;
 }
 
+// Saves with the assumption of constant hardcoded mass, and walls
+void SaveState(std::string filename){
+    FILE * savefile = fopen(filename.c_str(),"w");
+    if(savefile == NULL){
+        fprintf(fp,"Save failed. Unable to open file. Maybe it doesn't exist? %s\n", filename.c_str());
+        return;
+    }
+
+    fprintf(savefile, "numobj %d\n",num);
+    // save radius length position orientation velocity rotationalV
+    for(int i = 0; i < num; i ++)
+    {
+        dVector3 pos;
+        dMatrix3 R, Rt;
+        dBodyCopyPosition(obj[i].body, pos);
+        dBodyCopyRotation(obj[i].body, R);
+        // position rotation radius length
+        fprintf(savefile, "ind %d pos %f %f %f ",i,pos[0],pos[1],pos[2]);
+        fprintf(savefile, "R %f %f %f %f %f %f %f %f %f %f %f %f ",
+                R[0],R[1],R[2],R[3],R[4],R[5],R[6],R[7],R[8],R[9],R[10],R[11]);
+        fprintf(savefile, "Rad %f L %f ",rad,AR*rad);
+        //vel rvel
+        const dReal * lvel = dBodyGetLinearVel(obj[i].body);
+        const dReal * rvel = dBodyGetAngularVel(obj[i].body);
+        fprintf(savefile, "lvel %f %f %f rvel %f %f %f ",lvel[0],lvel[1],lvel[2],rvel[0],rvel[1],rvel[2]);
+        fprintf(savefile, "\n");
+    }
+    fclose(savefile);
+    fprintf(fp,"Save complete: %s\n", filename.c_str());
+}
+
+// Saves with the assumption of constant hardcoded mass, and walls. radius and length in loadifle are actually also ignored.
+void LoadState(std::string filename){
+
+    FILE * loadfile = fopen(filename.c_str(),"r");
+    if(loadfile == NULL){
+        fprintf(fp,"Load failed. Unable to open file. Maybe it doesn't exist? %s\n", filename.c_str());
+        return;
+    }
+
+    fprintf(fp,"Load success. \n");
+    while(num > 0)
+    {
+    //    fprintf(fp,"num %d \n",num);
+        removeObject(0);
+        num --;
+    }
+    fprintf(fp,"Cleared Current capsules. \n");
+
+    dVector3 pos;
+    dMatrix3 R, Rt;
+    float lvl[3];
+    float rvl[3];
+
+    int numobjs, ind;
+    float rad,l;
+    fscanf(loadfile, "numobj %d\n", &numobjs);
+
+    for(int i =0; i<numobjs;i ++)
+    {
+        fscanf(loadfile, "ind %d pos %f %f %f R %f %f %f %f %f %f %f %f %f %f %f %f Rad %f L %f lvel %f %f %f rvel %f %f %f \n",
+               &ind,
+               &(pos[0]),&(pos[1]),&(pos[2]),
+               &(R[0]),&(R[1]),&(R[2]),&(R[3]),&(R[4]),&(R[5]),&(R[6]),&(R[7]),&(R[8]),&(R[9]),&(R[10]),&(R[11]),
+               &rad,&l,
+               &(lvl[0]),&(lvl[1]),&(lvl[2]),
+               &(rvl[0]),&(rvl[1]),&(rvl[2])
+               );
+
+        //fprintf(fp,"dropping loaded rod. %d\n",ind);
+        drop();
+        dBodySetPosition (obj[num-1].body, pos[0],pos[1],pos[2]);
+        dBodySetRotation (obj[num-1].body, R);
+        dBodySetLinearVel(obj[num-1].body, lvl[0],lvl[1],lvl[2]);
+        dBodySetAngularVel(obj[num-1].body, rvl[0],rvl[1],rvl[2]);
+    }
+    fclose(loadfile);
+}
+
 // called when a key pressed
 static void command (int cmd)
 {
@@ -697,6 +793,18 @@ static void command (int cmd)
     if (cmd == 'z') {
         fprintf(fp, "num: %d\n", num);
         fprintf(fp, "Number of objects: %lu\n", obj.size());
+        return;
+    }
+
+    // save current state
+    if (cmd == 'y') {
+        SaveState(savefilename);
+        return;
+    }
+
+    // load previous save state
+    if (cmd == 'e') {
+        LoadState(loadfilename);
         return;
     }
 
@@ -963,7 +1071,7 @@ int main (int argc, char **argv)
 {
     // init global vars /***/
     maxNumContactsSimulated = 0;
-    fp = stdout;//fopen("output.txt","w");
+    fp = stdout;
     AR = 50;
 
     // setup pointers to drawstuff callback functions
@@ -995,7 +1103,9 @@ int main (int argc, char **argv)
 
   dWorldSetContactMaxCorrectingVel (world,0.1);
   dWorldSetContactSurfaceLayer (world,0.001);
-  dCreatePlane (space,0,0,1,0);
+  assert(nwalls == 1 || nwalls == 5); // need floor or floor+sidewalls
+  dGeomID wall_D = dCreatePlane (space,0,0,1,0);
+  walls[0] = wall_D;
   // memset (obj,0,sizeof(obj));
     obj.clear();
 
@@ -1006,10 +1116,17 @@ int main (int argc, char **argv)
   dWorldSetStepThreadingImplementation(world, dThreadingImplementationGetFunctions(threading), threading);
 
   // draw bounding box
-//  dGeomID wall_N = dCreatePlane(space, 0, -1, 0, -2);
-//  dGeomID wall_E = dCreatePlane(space, -1, 0, 0, -2);
-//  dGeomID wall_S = dCreatePlane(space, 0, 1, 0, -2);
-//  dGeomID wall_W = dCreatePlane(space, 1, 0, 0, -2);
+  float bound = rad*AR/2.0+1.001;
+  if(nwalls == 5){
+      dGeomID wall_N = dCreatePlane(space, 0, -1, 0, -bound);
+      dGeomID wall_E = dCreatePlane(space, -1, 0, 0, -bound);
+      dGeomID wall_S = dCreatePlane(space, 0, 1, 0, -bound);
+      dGeomID wall_W = dCreatePlane(space, 1, 0, 0, -bound);
+      walls[1]=wall_N;
+      walls[2]=wall_E;
+      walls[3]=wall_S;
+      walls[4]=wall_W;
+  }
 
   // run simulation
   dsSimulationLoop (argc,argv,800,600,&fn);
