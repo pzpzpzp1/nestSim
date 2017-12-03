@@ -475,7 +475,9 @@ static void start()
   printf ("To show/save number of contacts for the selected object, press q.\n");
   printf ("To toggle immobility of current objects, press k.\n");
   printf ("To see if any objects are stable, press v.\n");
-  printf ("To see if the selected object is stable, press b.\n\n");
+  printf ("To see if the selected object is stable, press b.\n");
+  printf ("To save the current state, press y.\n");
+  printf ("To load a state, press e.\n\n");
 }
 
 
@@ -1003,7 +1005,7 @@ static void simLoop (int pause)
 {
     dsSetColor (0,0,2);
     dSpaceCollide (space,0,&nearCallback);
-    if (!pause) dWorldQuickStep (world, 0.02);
+    if (!pause) { dWorldQuickStep (world, 0.02); }
 
     if (write_world) {
         FILE *f = fopen ("state.dif","wt");
@@ -1044,6 +1046,7 @@ static void simLoop (int pause)
 
   dsSetColor (1,1,0);
   dsSetTexture (DS_WOOD);
+
   for (int i=0; i<num; i++) {
 
       if (i==selected) {
@@ -1053,17 +1056,9 @@ static void simLoop (int pause)
           dsSetColor (1,1,0);
       }
       drawGeom (obj[i].geom,0,0,show_aabb);
-
-//    for (int j=0; j < GPB; j++) {
-//      if (i==selected) {
-//        dsSetColor (0,0.7,1);
-//      }
-//      else {
-//        dsSetColor (1,1,0);
-//      }
-//      drawGeom (obj[i].geom[j],0,0,show_aabb);
-//    }
   }
+
+  return;
 }
 
 

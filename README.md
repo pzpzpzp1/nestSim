@@ -1,5 +1,11 @@
 # nestSim
 
+## To-do
+
+* "Drop protocols"
+* Contact force vectors
+* Height/radius/orientation/density metrics
+
 ## Parameters
 
 * Friction
