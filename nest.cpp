@@ -25,10 +25,12 @@
 #include <ode/ode.h>
 #include <drawstuff/drawstuff.h>
 #include "texturepath.h"
+#include "plot.hpp"
 #include <assert.h>
 #include <vector>
 #include <string>
 #include <cmath>
+#include <map>
 #include <iostream>
 #include <algorithm>
 //#include <Eigen/Dense>
@@ -330,17 +332,17 @@ std::string savefilename = "savestate.txt";
 std::string loadfilename = "savestate.txt";
 float rad = .03; // rod radius
 int AR = 50; // rod aspect ratio
-int nwalls = 5; // number of walls. Should be 1 or 5
-dGeomID walls[5]; // wall objects
+const int nwalls = 100; // number of walls. Should be 1 or 5
+dGeomID walls[nwalls]; // wall objects
+float bound = rad*AR/2.0+1.001; // shortest horz distance from walls to origin
 
 struct MyFeedback {
     dJointFeedback fb;
     bool first;
 };
-static int doFeedback=0;
+static int doFeedback = 0;
 static MyFeedback feedbacks[MAX_FEEDBACKNUM];
-static int fbnum=0;
-
+static int fbnum = 0;
 
 
 // Return the spherical angles that correspond to the matrix R (of a rod that started aligned with the z axis)
@@ -374,6 +376,7 @@ void removeObject(int index) {
         obj.erase(obj.begin() + index);
     }
     else {
+        // This shouldn't happen
         throw std::runtime_error("No geom attached!");
     }
     return;
@@ -381,6 +384,20 @@ void removeObject(int index) {
 //        if (obj[index].geom[k]) dGeomDestroy(obj[index].geom[k]);
 //    }
     // memset(&obj[index], 0, sizeof(obj[index]));
+}
+
+std::vector<float> position(int index) {
+    std::vector<float> pos;
+    const dReal* pos_ = dGeomGetPosition(obj[index].geom);
+    pos.push_back(pos_[0]);
+    pos.push_back(pos_[1]);
+    pos.push_back(pos_[2]);
+    return pos;
+}
+
+std::vector<float> orientationAngles(int index) {
+    std::vector<float> angles = sphericalAnglesFromR(dGeomGetRotation(obj[index].geom), false);
+    return angles;
 }
 
 // this is called by dSpaceCollide when two objects in space are
@@ -446,6 +463,38 @@ static void nearCallback (void *data, dGeomID o1, dGeomID o2)
     }
 }
 
+void printInstructions(void) {
+    printf("Objects:\n");
+    printf ("  To drop another object, press:\n");
+    printf ("     c for 1 capsule.\n");
+    printf ("     x for 50 capsules.\n");
+    printf ("  To select an object, press space.\n");
+    printf ("  To unselect objects, press u.\n\n");
+    printf ("  To get the position/rotation of the selected object, press p.\n");
+    printf ("  To toggle immobility of current objects, press k.\n\n");
+
+    printf("Misc:\n");
+    printf ("  To toggle showing the geom AABBs, press a.\n");
+    printf ("  To toggle showing the contact points, press t.\n");
+    printf ("  To show joint feedbacks of selected object, press f.\n\n");
+
+    printf("Stability:\n");
+    printf ("  To see which objects are stable, press v.\n");
+    printf ("  To see if the selected object is stable, press b.\n\n");
+
+    printf("Metrics:\n");
+    printf("  To show the volumetric packing fraction, press n.\n");
+    printf("  To show the highest midpoint value, press h.\n");
+
+    printf("Save/Load:\n");
+    printf ("  To save the current state, press y.\n");
+    printf ("  To load a state, press e.\n\n");
+
+    printf ("To repeat the instructions, press i.\n\n");
+
+    return;
+}
+
 
 // start simulation - set viewpoint
 
@@ -456,23 +505,8 @@ static void start()
   static float xyz[3] = {2.1640f,-1.3079f,1.7600f};
   static float hpr[3] = {125.5000f,-17.0000f,0.0000f};
   dsSetViewpoint (xyz,hpr);
-  printf ("To drop another object, press:\n");
-  printf ("   c for capsule.\n");
-  printf ("   x for 50 capsules.\n");
-  printf ("To select an object, press space.\n");
-  printf ("To unselect objects, press u.\n");
-  printf ("To toggle showing the geom AABBs, press a.\n");
-  printf ("To toggle showing the contact points, press t.\n");
-  printf ("To show joint feedbacks of selected object, press f.\n");
-  printf ("To get the position/rotation of the selected object, press p.\n");
 
-  printf ("To show/save total number of contacts, press w.\n");
-  printf ("To show/save number of contacts for the selected object, press q.\n");
-  printf ("To toggle immobility of current objects, press k.\n");
-  printf ("To see if any objects are stable, press v.\n");
-  printf ("To see if the selected object is stable, press b.\n");
-  printf ("To save the current state, press y.\n");
-  printf ("To load a state, press e.\n\n");
+    printInstructions();
 }
 
 
@@ -780,6 +814,9 @@ void LoadState(std::string filename){
     fclose(loadfile);
 }
 
+// copy-pasted code
+#include "pile.hpp"
+
 // called when a key pressed
 static void command (int cmd)
 {
@@ -793,14 +830,29 @@ static void command (int cmd)
         return;
     }
 
+    else if (cmd == 'i') {
+        printInstructions();
+        return;
+    }
+
+    else if (cmd == 'h') {
+        printf("Highest midpoint value: %f\n", highestMidpoint());
+        return;
+    }
+
+    else if (cmd == 'n') {
+        printf("Volumetric packing fraction: %f\n", packingFraction(0));
+        return;
+    }
+
     // save current state
-    if (cmd == 'y') {
+    else if (cmd == 'y') {
         SaveState(savefilename);
         return;
     }
 
     // load previous save state
-    if (cmd == 'e') {
+    else if (cmd == 'e') {
         LoadState(loadfilename);
         return;
     }
@@ -808,64 +860,64 @@ static void command (int cmd)
     // check all collisions
     else if (cmd == 'w')
     {
-        dContact contact[MAX_CONTACTS];   // up to MAX_CONTACTS contacts per box-box
-        for (i=0; i<MAX_CONTACTS; i++) {
-            contact[i].surface.mode = dContactBounce | dContactSoftCFM;
-            contact[i].surface.mu = dInfinity;
-            contact[i].surface.mu2 = 0;
-            contact[i].surface.bounce = 0.1;
-            contact[i].surface.bounce_vel = 0.1;
-            contact[i].surface.soft_cfm = 0.01;
-        }
-
-        int totalc = 0; // total number of contacts
-        fprintf(fp, "num objs %d\n", num);
-
-        // check all collisions between num x num objects
-        for (i = 0; i < num; i ++){
-            for (j = 0; j < num; j ++){
-                dGeomID g1 = obj[i].geom;
-                dGeomID g2 = obj[j].geom;
-
-                totalc += dCollide (g1,g2,MAX_CONTACTS,&contact[0].geom,
-                                    sizeof(dContact));
-            }
-        }
-        // doublecounting collisions should always be even number
-        assert(totalc%2==0);
-        totalc/=2;
-
-        if (totalc >= maxNumContactsSimulated )
-        {
-            maxNumContactsSimulated = totalc;
-            fprintf(fp, "numContacts %d   maxcontacts %d \n\n", totalc, maxNumContactsSimulated);
-        }
+//        dContact contact[MAX_CONTACTS];   // up to MAX_CONTACTS contacts per box-box
+//        for (i=0; i<MAX_CONTACTS; i++) {
+//            contact[i].surface.mode = dContactBounce | dContactSoftCFM;
+//            contact[i].surface.mu = dInfinity;
+//            contact[i].surface.mu2 = 0;
+//            contact[i].surface.bounce = 0.1;
+//            contact[i].surface.bounce_vel = 0.1;
+//            contact[i].surface.soft_cfm = 0.01;
+//        }
+//
+//        int totalc = 0; // total number of contacts
+//        fprintf(fp, "num objs %d\n", num);
+//
+//        // check all collisions between num x num objects
+//        for (i = 0; i < num; i ++){
+//            for (j = 0; j < num; j ++){
+//                dGeomID g1 = obj[i].geom;
+//                dGeomID g2 = obj[j].geom;
+//
+//                totalc += dCollide (g1,g2,MAX_CONTACTS,&contact[0].geom,
+//                                    sizeof(dContact));
+//            }
+//        }
+//        // doublecounting collisions should always be even number
+//        assert(totalc%2==0);
+//        totalc/=2;
+//
+//        if (totalc >= maxNumContactsSimulated )
+//        {
+//            maxNumContactsSimulated = totalc;
+//            fprintf(fp, "numContacts %d   maxcontacts %d \n\n", totalc, maxNumContactsSimulated);
+//        }
     }
 
     // Check collisions for selected object
     else if (cmd == 'q') {
-        if (selected >= 0) {
-            fprintf(fp, "\tselected object: %d\n", selected);
-
-            // print object info (position, orientation, etc.)
-            dVector3 pos;
-            dMatrix3 R;
-            dBodyCopyPosition(obj[selected].body, pos);
-            dBodyCopyRotation(obj[selected].body, R);
-
-            // get contacts
-            dContact contact_array[num];
-            int num_contacts = 0;
-            dGeomID g0 = obj[selected].geom;
-            for (j = 0; j < num; j++) {
-                dGeomID g1 = obj[j].geom;
-                if (dCollide(g0, g1, MAX_CONTACTS, &contact_array[0].geom, sizeof(dContact)) > 0) {
-                    num_contacts++;
-                }
-            }
-
-            fprintf(fp, "num contacts: %d\n\n", num_contacts);
-        }
+//        if (selected >= 0) {
+//            fprintf(fp, "\tselected object: %d\n", selected);
+//
+//            // print object info (position, orientation, etc.)
+//            dVector3 pos;
+//            dMatrix3 R;
+//            dBodyCopyPosition(obj[selected].body, pos);
+//            dBodyCopyRotation(obj[selected].body, R);
+//
+//            // get contacts
+//            dContact contact_array[num];
+//            int num_contacts = 0;
+//            dGeomID g0 = obj[selected].geom;
+//            for (j = 0; j < num; j++) {
+//                dGeomID g1 = obj[j].geom;
+//                if (dCollide(g0, g1, MAX_CONTACTS, &contact_array[0].geom, sizeof(dContact)) > 0) {
+//                    num_contacts++;
+//                }
+//            }
+//
+//            fprintf(fp, "num contacts: %d\n\n", num_contacts);
+//        }
     }
 
     // Find if any rod is stable.
@@ -880,7 +932,7 @@ static void command (int cmd)
             }
         }
 
-        fprintf(fp, "Number of stable/total objects: %d/%d\n", num_stable, num);
+        fprintf(fp, "Number of stable/total objects: %d/%d\n\n", num_stable, num);
     }
 
     // Check if the selected rod is stable.
@@ -938,8 +990,8 @@ static void command (int cmd)
     }
     else if (cmd == 'p' && selected >= 0)
     {
-        const dReal* pos = dGeomGetPosition(obj[selected].geom);
-        std::vector<float> angles = sphericalAnglesFromR(dGeomGetRotation(obj[selected].geom), false);
+        std::vector<float> pos = position(selected);
+        std::vector<float> angles = orientationAngles(selected);
         printf("Object %d:\n", selected);
         printf("\tposition:\t[%f, %f, %f]\n", pos[0], pos[1], pos[2]);
         printf("\trotation:\t[%f, %f]\t\t(theta, phi)\n\n",
@@ -1082,7 +1134,7 @@ int main (int argc, char **argv)
   dWorldSetContactMaxCorrectingVel (world,0.1);
   dWorldSetContactSurfaceLayer (world,0.001);
 
-  assert(nwalls == 1 || nwalls == 5); // need floor or floor+sidewalls
+//  assert(nwalls == 1 || nwalls == 5); // need floor or floor+sidewalls
   dGeomID wall_D = dCreatePlane (space,0,0,1,0);
   walls[0] = wall_D;
     obj.clear();
@@ -1094,17 +1146,27 @@ int main (int argc, char **argv)
   dWorldSetStepThreadingImplementation(world, dThreadingImplementationGetFunctions(threading), threading);
 
   // draw bounding box
-  float bound = rad*AR/2.0+1.001;
-  if(nwalls == 5){
-      dGeomID wall_N = dCreatePlane(space, 0, -1, 0, -bound);
-      dGeomID wall_E = dCreatePlane(space, -1, 0, 0, -bound);
-      dGeomID wall_S = dCreatePlane(space, 0, 1, 0, -bound);
-      dGeomID wall_W = dCreatePlane(space, 1, 0, 0, -bound);
-      walls[1]=wall_N;
-      walls[2]=wall_E;
-      walls[3]=wall_S;
-      walls[4]=wall_W;
-  }
+//  float bound = rad*AR/2.0+1.001; // moved to globals
+    if (nwalls == 5){
+        dGeomID wall_N = dCreatePlane(space, 0, -1, 0, -bound);
+        dGeomID wall_E = dCreatePlane(space, -1, 0, 0, -bound);
+        dGeomID wall_S = dCreatePlane(space, 0, 1, 0, -bound);
+        dGeomID wall_W = dCreatePlane(space, 1, 0, 0, -bound);
+        walls[1]=wall_N;
+        walls[2]=wall_E;
+        walls[3]=wall_S;
+        walls[4]=wall_W;
+    }
+    else if (nwalls > 5) {
+        // put in like a ton of walls
+        float angle_step = 2 * M_PI / (nwalls - 1.);
+        float angle = 0;
+
+        for (int i = 0; i < nwalls; i++) {
+            walls[i] = dCreatePlane(space, cos(angle), sin(angle), 0, -bound);
+            angle += angle_step;
+        }
+    }
 
   // run simulation
   dsSimulationLoop (argc,argv,800,600,&fn);

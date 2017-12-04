@@ -9,6 +9,48 @@
 * These are not stable ([1](https://groups.google.com/d/msg/ode-users/kPfQIo-QOlE/I3EwRFI6BwAJ), [2](https://groups.google.com/d/msg/ode-users/OK1V4SXrb_k/ykJB7n7j4HIJ)) and can fluctuate wildly in value (e.g., select an object and hit 'f' multiple times to output the joint feedbacks)
 * Must be low-pass filtered
 
+## Pile Metrics
+
+### Volumetric packing fraction
+* Maximum packing fraction would be the same as that of circles ~ 0.9
+* N=200 piles --> packing fraction of 0.05
+* For capsules, the "length" does not include the caps
+
+### Height/radial spread
+
+(Radial spread will require cylindrical walls)
+
+* Highest midpoint position (discard if rod is leaning against a wall)
+* Midpoint distribution (as a function of height/radius)
+* Mass distribution (as a function of height/radius)
+* Contact density (as a function of height/radius)
+* Orientation density (as a function of height/radius)
+
+## Stuff to try
+
+### Effect of a single object removal
+
+1. Start with a pile and get metrics
+2. Save state
+3. Remove a single rod, noting its information
+4. Measure the pile metrics again
+5. Reload state and repeat
+
+### Drop angles
+
+1. Drop $N$ single rods from a particular angular distribution
+2. Get pile metrics
+
+### Drop positions
+
+1. Drop $N$ single rods from a particular spatial distribution
+2. Get pile metrics
+
+### Drop heights
+
+1. Drop $N$ single rods from a particular height
+2. Get pile metrics
+
 ## Parameters
 
 * Friction
