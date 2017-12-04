@@ -322,8 +322,6 @@ static int selected = -1;	// selected object
 static int show_aabb = 0;	// show geom AABBs?
 static int show_contacts = 1;	// show contact points?
 static int random_pos = 1;	// drop objects from random position?
-static int write_world = 0;
-static int show_body = 0;
 
 // global variables start now
 int maxNumContactsSimulated = 0;
@@ -427,7 +425,7 @@ static void nearCallback (void *data, dGeomID o1, dGeomID o2)
         contact[i].surface.bounce_vel = 0.1;
         contact[i].surface.soft_cfm = 0.01;
     }
-    if (int numc = dCollide (o1,o2,MAX_CONTACTS,&contact[0].geom,
+    if (int numc = dCollide(o1, o2, MAX_CONTACTS, &contact[0].geom,
                              sizeof(dContact))) {
         dMatrix3 RI;
         dRSetIdentity (RI);
@@ -437,12 +435,10 @@ static void nearCallback (void *data, dGeomID o1, dGeomID o2)
             dJointAttach (c,b1,b2);
             if (show_contacts) dsDrawBox (contact[i].geom.pos,RI,ss);
 
-            if (doFeedback && (b1==obj[selected].body || b2==obj[selected].body))
-            {
-                if (fbnum<MAX_FEEDBACKNUM)
-                {
-                    feedbacks[fbnum].first = b1==obj[selected].body;
-                    dJointSetFeedback (c,&feedbacks[fbnum++].fb);
+            if (doFeedback && (b1 == obj[selected].body || b2 == obj[selected].body)) {
+                if (fbnum<MAX_FEEDBACKNUM) {
+                    feedbacks[fbnum].first = (b1 == obj[selected].body);
+                    dJointSetFeedback (c, &feedbacks[fbnum++].fb);
                 }
                 else fbnum++;
             }
@@ -467,7 +463,6 @@ static void start()
   printf ("To unselect objects, press u.\n");
   printf ("To toggle showing the geom AABBs, press a.\n");
   printf ("To toggle showing the contact points, press t.\n");
-  printf ("To save the current state to 'state.dif', press 1.\n");
   printf ("To show joint feedbacks of selected object, press f.\n");
   printf ("To get the position/rotation of the selected object, press p.\n");
 
@@ -931,7 +926,7 @@ static void command (int cmd)
         if (selected >= 0) {
             removeObject(selected);
             printf("Object %d removed.\n", selected);
-            selected = -1;
+            selected--;
             num--;
         }
     }
@@ -941,9 +936,6 @@ static void command (int cmd)
     else if (cmd == 't') {
         show_contacts ^= 1;
     }
-    else if (cmd == '1') {
-        write_world = 1;
-    }
     else if (cmd == 'p' && selected >= 0)
     {
         const dReal* pos = dGeomGetPosition(obj[selected].geom);
@@ -952,6 +944,11 @@ static void command (int cmd)
         printf("\tposition:\t[%f, %f, %f]\n", pos[0], pos[1], pos[2]);
         printf("\trotation:\t[%f, %f]\t\t(theta, phi)\n\n",
                angles[0], angles[1]);
+    }
+    else if (cmd == 'f' && selected >= 0 && selected < num) {
+        if (dBodyIsEnabled(obj[selected].body)) {
+            doFeedback = 1;
+        }
     }
 }
 
@@ -968,21 +965,11 @@ void drawGeom (dGeomID g, const dReal *pos, const dReal *R, int show_aabb)
     int type = dGeomGetClass (g);
 
     if (type == dCapsuleClass) {
-        dReal radius,length;
+        dReal radius, length;
         dGeomCapsuleGetParams (g,&radius,&length);
         dsDrawCapsule (pos,R,length,radius);
     }
 
-    if (show_body) {
-        dBodyID body = dGeomGetBody(g);
-        if (body) {
-            const dReal *bodypos = dBodyGetPosition (body);
-            const dReal *bodyr = dBodyGetRotation (body);
-            dReal bodySides[3] = { 0.1, 0.1, 0.1 };
-            dsSetColorAlpha(0,1,0,1);
-            dsDrawBox(bodypos,bodyr,bodySides);
-        }
-    }
     if (show_aabb) {
         // draw the bounding box for this geom
         dReal aabb[6];
@@ -1007,39 +994,35 @@ static void simLoop (int pause)
     dSpaceCollide (space,0,&nearCallback);
     if (!pause) { dWorldQuickStep (world, 0.02); }
 
-    if (write_world) {
-        FILE *f = fopen ("state.dif","wt");
-        if (f) {
-            dWorldExportDIF (world,f,"X");
-            fclose (f);
-        }
-        write_world = 0;
-    }
-
-
-  if (doFeedback)
-  {
-    if (fbnum>MAX_FEEDBACKNUM)
-      printf("joint feedback buffer overflow!\n");
-    else
+    if (doFeedback)
     {
-      dVector3 sum = {0, 0, 0};
-      printf("\n");
-      for (int i=0; i<fbnum; i++) {
-        dReal* f = feedbacks[i].first?feedbacks[i].fb.f1:feedbacks[i].fb.f2;
-        printf("%f %f %f\n", f[0], f[1], f[2]);
-        sum[0] += f[0];
-        sum[1] += f[1];
-        sum[2] += f[2];
-      }
-      printf("Sum: %f %f %f\n", sum[0], sum[1], sum[2]);
-      dMass m;
-      dBodyGetMass(obj[selected].body, &m);
-      printf("Object G=%f\n", GRAVITY*m.mass);
+        if (fbnum>MAX_FEEDBACKNUM) {
+            printf("joint feedback buffer overflow!\n");
+        }
+        else
+        {
+            // Sum the forces on the object
+            dVector3 sum = {0, 0, 0};
+
+            for (int i = 0; i < fbnum; i++) {
+                dReal* f = feedbacks[i].first ? feedbacks[i].fb.f1 : feedbacks[i].fb.f2;
+                printf("%f %f %f\n", f[0], f[1], f[2]);
+                sum[0] += f[0];
+                sum[1] += f[1];
+                sum[2] += f[2];
+            }
+            printf("Sum: %f %f %f\n", sum[0], sum[1], sum[2]);
+
+            // Gravitational force on the object
+            dMass m;
+            dBodyGetMass(obj[selected].body, &m);
+            printf("Gravitational force: %f\n", GRAVITY*m.mass);
+        }
+
+        // Reset
+        doFeedback = 0;
+        fbnum = 0;
     }
-    doFeedback = 0;
-    fbnum = 0;
-  }
 
   // remove all contact joints
   dJointGroupEmpty (contactgroup);
@@ -1098,10 +1081,10 @@ int main (int argc, char **argv)
 
   dWorldSetContactMaxCorrectingVel (world,0.1);
   dWorldSetContactSurfaceLayer (world,0.001);
+
   assert(nwalls == 1 || nwalls == 5); // need floor or floor+sidewalls
   dGeomID wall_D = dCreatePlane (space,0,0,1,0);
   walls[0] = wall_D;
-  // memset (obj,0,sizeof(obj));
     obj.clear();
 
   dThreadingImplementationID threading = dThreadingAllocateMultiThreadedImplementation();

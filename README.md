@@ -3,8 +3,11 @@
 ## To-do
 
 * "Drop protocols"
-* Contact force vectors
 * Height/radius/orientation/density metrics
+
+## Contact Forces
+* These are not stable ([1](https://groups.google.com/d/msg/ode-users/kPfQIo-QOlE/I3EwRFI6BwAJ), [2](https://groups.google.com/d/msg/ode-users/OK1V4SXrb_k/ykJB7n7j4HIJ)) and can fluctuate wildly in value (e.g., select an object and hit 'f' multiple times to output the joint feedbacks)
+* Must be low-pass filtered
 
 ## Parameters
 
