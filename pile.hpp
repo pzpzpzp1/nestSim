@@ -61,7 +61,19 @@ float cot(float theta) {
 // x = boundary value requested
 // a = semi-major axis of ellipse = rad / cos(theta)
 float ellipseIntegral(float x, float a, float b) {
-    return b * (x * sqrt(1 - pow(x / a, 2)) + a * asin(x / a));
+    assert(std::abs(x) <= a);
+    float res = 0.;
+    if (a >= 0) {
+        res += b * (x * sqrt(1 - pow(x / a, 2)) + a * asin(x / a));
+    } else {
+        a = -a;
+        res -= b * (x * sqrt(1 - pow(x / a, 2)) + a * asin(x / a));
+    }
+    assert(!isnan(res));
+
+//    printf("\t\t(x, a, b, res): (%f, %f, %f, %f)\n", x, a, b, res);
+
+    return res;
 }
 
 // Calculate the mass density for height-parameterized slices dh-thick.
@@ -72,12 +84,12 @@ std::vector<float> massDensityByHeight(float dh) {
     std::vector<float> density(nslices, 0);
 
     // Area of a slice
-    float area;
+    float slice_area;
     if (nwalls == 5) {
-        area = pow(bound * 2, 2);
+        slice_area = pow(bound * 2, 2);
     }
     else if (nwalls > 5) {
-        area = M_PI * pow(bound, 2);
+        slice_area = M_PI * pow(bound, 2);
     }
     else {
         throw std::runtime_error("Can't take slices without boundaries.");
@@ -150,107 +162,146 @@ std::vector<float> massDensityByHeight(float dh) {
 //        }
 
         // the plane we're intersecting against the rod
-        float h = lowest_slice * dh + dh / 2.;
+        float h0 = dh / 2. + EPSILON;
+        float h, area, offset;
+        float a, offset_low, offset_high, d_expr, d_low, d_high,
+              e_low, e_high, n_low, n_high;
+        bool contained;
+
+        // Iterate through slices
         for (int j = lowest_slice; j <= highest_slice; j++) {
-            float area = 0;
+            h = h0 + j * dh;
+            area = 0.;
+
+            // Some precalculated values
+            a             = rad / cos(angles[0]);
+            offset_low    = std::abs(h - mid_of_lower_cap);
+            offset_high   = std::abs(h - mid_of_upper_cap);
+            d_expr        = cot(angles[0]) + 1. / cot(angles[0]);
+            d_low         = offset_low * d_expr;
+            d_high        = offset_high * d_expr;
+            e_low         = std::abs(h - bot_of_lower_cap) * d_expr;
+            e_high        = std::abs(top_of_upper_cap - h) * d_expr;
+            n_low         = rad * sqrt(1 - pow(offset_low / rad, 2));
+            n_high        = rad * sqrt(1 - pow(offset_high / rad, 2));
+
+            // Intersection code
+            contained = (h_low <= h && h <= h_high);
 
             // The rod is essentially horizontal (w/in fraction of a degree)
-            if (std::abs(M_PI/2 - angles[0]) < 0.01) {
-                if (h_low < h && h < h_high) {
-                    printf("\thorizontal     \t");
-                    float offset = std::abs(h - pos[2]);
-                    area = 2 * rad * sqrt(1. - pow(offset / rad, 2))
-                             * (rad * AR)
-                           + 2 * M_PI * rad * sqrt(1. - pow(offset / rad, 2));
-                }
-                else {
-                    printf("\tno intersection 0\t");
-                }
+            if (contained && std::abs(M_PI/2 - angles[0]) < EPSILON) {
+                printf("\thorizontal          \t");
+                offset = std::abs(h - pos[2]);
+                area = 2 * rad * sqrt(1. - pow(offset / rad, 2))
+                         * (rad * AR)
+                       + 2 * M_PI * rad * sqrt(1. - pow(offset / rad, 2));
             }
-            else {
-                if (h_low < h && h < h_high) {
-                    float a = rad / cos(angles[0]);
 
-                    assert(a > 0.);
+            // Rectangular only
+            else if (contained
+                     && h >= bot_of_lower_cap
+                     && h >= top_of_lower_cap
+                     && h <= bot_of_upper_cap
+                     && h <= top_of_upper_cap) {
+                printf("\trectangular only\t");
+                area = M_PI * rad * a; // elliptical area
+            }
 
-                    float offset = pos[2] - h; // must be signed
+            // Bottom cap only
+            else if (contained
+                     && h <= bot_of_lower_cap
+                     && h <= top_of_lower_cap
+                     && h <= bot_of_upper_cap
+                     && h <= top_of_upper_cap) {
+                printf("\tbottom cap only    \t");
+                area = M_PI * pow(n_low, 2);
+            }
 
-                    float offset_low = std::abs(h - mid_of_lower_cap);
-                    float n_low = a * sqrt(1 - pow(offset_low / rad, 2));
-                    float d_low = offset_low * (cot(angles[0]) + 1. / cot(angles[0]))
-                                  + offset / cot(angles[0]);
+            // Top cap only
+            else if (contained
+                     && h >= bot_of_lower_cap
+                     && h >= top_of_lower_cap
+                     && h >= bot_of_upper_cap
+                     && h >= top_of_upper_cap) {
+                printf("\ttop cap only        \t");
+                area = M_PI * pow(n_high, 2);
+            }
 
-                    float offset_high = std::abs(h - mid_of_upper_cap);
-                    float n_high = a * sqrt(1 - pow(offset_high / rad, 2));
-                    float d_high = offset_high * (cot(angles[0]) + 1. / cot(angles[0]))
-                                   - offset / cot(angles[0]);
-
-                    // Only intersects the rectangular portion of cylinder
-                    if (top_of_lower_cap <= h && h <= bot_of_upper_cap) {
-                        printf("\trectangular only\t");
-                        // Area is an ellipse
-                        area = M_PI * rad * a;
-                    }
-                    // Intersects low cap
-                    else if (h <= top_of_lower_cap) {
-                        assert(offset_low <= rad);
-
-                        // Intersects both caps
-                        if (bot_of_upper_cap <= h) {
-                            assert(offset_high <= rad);
-                            assert(d_low <= rad * sqrt(1 + AR / 4));
-                            assert(d_high <= rad * sqrt(1 + AR / 4));
-
-                            printf("\tboth caps       \t");
-                            area += ellipseIntegral(d_high, a, rad)
-                                    - ellipseIntegral(-d_low, a, rad);
-
-                            area += ellipseIntegral(n_low, n_low, n_low)
-                                   - ellipseIntegral(n_low * cos(angles[0]),
-                                                     n_low, n_low);
-
-                            area += ellipseIntegral(n_high, n_high, n_high)
-                                    - ellipseIntegral(n_high * cos(angles[0]),
-                                                      n_high, n_high);
-                        }
-                        // Intersects rectangular portion + low cap
-                        else if (h <= bot_of_upper_cap) {
-                            assert(d_low <= rad * sqrt(1 + AR / 4));
-
-                            printf("\tlow + rectangular\t");
-                            area += ellipseIntegral(a, a, rad)
-                                    - ellipseIntegral(-d_low, a, rad);
-
-                            area += ellipseIntegral(n_low, n_low, n_low)
-                                   - ellipseIntegral(n_low * cos(angles[0]),
-                                                     n_low, n_low);
-                        }
-                        // Intersects only low cap
-                        else if (h <= bot_of_lower_cap) {
-                            printf("\tlow cap only    \t");
-                            area += M_PI * pow(n_low, 2);
-                        }
-                    }
-                    // Intersects high cap but not low cap
-                    else if (h >= bot_of_upper_cap) {
-                        assert(offset_high <= rad);
-                        // Intersects rectangular portion + high cap
-                        if (h <= top_of_upper_cap) {
-                            printf("\thigh + rectangular\t");
-                            area += ellipseIntegral(-a, a, rad)
-                                    - ellipseIntegral(d_high, a, rad);
-
-                            area += ellipseIntegral(n_high, n_high, n_high)
-                                    - ellipseIntegral(n_high * cos(angles[0]),
-                                                      n_high, n_high);
-                        }
-                        // Intersects only high cap
-                        else if (h >= top_of_upper_cap) {
-                            printf("\thigh cap only     \t");
-                            area += M_PI * pow(n_high, 2);
-                        }
-                    }
+            // Bottom cap + rectangular
+            else if (contained
+                     && h >= bot_of_lower_cap
+                     && h <= top_of_lower_cap
+                     && h <= bot_of_upper_cap
+                     && h <= top_of_upper_cap) {
+                printf("\tbot + rectangular");
+                if (h < mid_of_lower_cap) {
+                    printf("*");
+                    area =    ellipseIntegral(a, a, rad)
+                            - ellipseIntegral(a - e_low, a, rad)
+                            + ellipseIntegral(n_low, n_low, n_low)
+                            - ellipseIntegral(-n_low * cos(angles[0]), n_low, n_low);
+                } else {
+                    area =    ellipseIntegral(a, a, rad)
+                            - ellipseIntegral(-d_low, a, rad)
+                            + ellipseIntegral(n_low, n_low, n_low)
+                            - ellipseIntegral(n_low * cos(angles[0]), n_low, n_low);
                 }
+                printf("\t");
+            }
+
+            // Both caps
+            else if (contained
+                     && h >= bot_of_lower_cap
+                     && h <= top_of_lower_cap
+                     && h >= bot_of_upper_cap
+                     && h <= top_of_upper_cap) {
+                printf("\tboth caps        \t");
+
+                // Higher than both midpoints
+                if (h > mid_of_upper_cap) {
+//                    area =    ellipseIntegral()
+//                            - ellipseIntegral()
+//                            + ellipseIntegral()
+//                            - ellipseIntegral();
+                }
+                // Higher than the lower midpoint, lower than the higher midpoint
+                else if (mid_of_lower_cap <= h && h <= mid_of_upper_cap) {
+//                    area =    ellipseIntegral()
+//                            - ellipseIntegral()
+//                            + ellipseIntegral()
+//                            - ellipseIntegral();
+                }
+                // Lower than both midpoints
+                else {
+//                    area =    ellipseIntegral()
+//                            - ellipseIntegral()
+//                            + ellipseIntegral()
+//                            - ellipseIntegral();
+                }
+
+                area = 0;
+            }
+
+            // Rectangular + top cap
+            else if (contained
+                     && h >= bot_of_lower_cap
+                     && h >= top_of_lower_cap
+                     && h >= bot_of_upper_cap
+                     && h <= top_of_upper_cap) {
+                printf("\ttop + rectangular");
+                if (h > mid_of_upper_cap) {
+                    printf("*");
+                    area =  ellipseIntegral(a, a, rad)
+                            - ellipseIntegral(a - e_high, a, rad)
+                            + ellipseIntegral(n_high, n_high, n_high)
+                            - ellipseIntegral(-n_high * cos(angles[0]), n_high, n_high);
+                } else {
+                    area =  ellipseIntegral(a, a, rad)
+                            - ellipseIntegral(-d_high, a, rad)
+                            + ellipseIntegral(n_high, n_high, n_high)
+                            - ellipseIntegral(n_high * cos(angles[0]), n_high, n_high);
+                }
+                printf("\t");
             }
 
             if (isnan(area)) {
@@ -261,12 +312,11 @@ std::vector<float> massDensityByHeight(float dh) {
             printf("\t%f\n", area);
 
             density[j] += area;
-            h += dh;
         }
     }
 
     for (int i = 0; i < nslices; i++) {
-        density[i] /= area;
+        density[i] /= slice_area;
     }
 
     return density;
