@@ -1,7 +1,7 @@
 #ifndef PILE_HPP
 #define PILE_HPP
 
-// Structures to deal with metrics of a pile
+// Structures/functions to deal with metrics of a pile
 //  All indexed midpoints
 //  All indexed orientations
 //  All double-indexed contact points
@@ -16,6 +16,7 @@ void printFloatVector(std::vector<float> vec) {
     printf("%f]\n", vec[vec.size() - 1]);
 }
 
+
 float highestMidpoint(void) {
     float height = 0;
 
@@ -26,6 +27,7 @@ float highestMidpoint(void) {
 
     return height;
 }
+
 
 // Global packing fraction
 //    Set height = 0 to use highest midpoint as the height
@@ -54,15 +56,21 @@ float packingFraction(float height) {
     return obj_vol / total_vol;
 }
 
+
+// No cotan function in C++!
 float cot(float theta) {
     return cos(theta) / sin(theta);
 }
 
-// x = boundary value requested on horizontal ellipse
+
+// The indefinite integral of b * sqrt(1 - x^2 / a^2), which defines an
+//      ellipse of semi-major length a and semi-minor length b
+// x = point to evaluate the integral
 // a = semi-major axis of ellipse = rad / cos(theta)
-// y = semi-minor axis of ellipse
+// b = semi-minor axis of ellipse
 float ellipseIntegral(float x, float a, float b) {
     assert(std::abs(x) <= a);
+
     float res = 0.;
 
     if (a >= 0) {
@@ -78,6 +86,7 @@ float ellipseIntegral(float x, float a, float b) {
 
     return res;
 }
+
 
 // Calculate the mass density for height-parameterized slices dh-thick.
 // Based on area-density of a slice; no integration in the z-direction.

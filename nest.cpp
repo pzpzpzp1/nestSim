@@ -25,7 +25,6 @@
 #include <ode/ode.h>
 #include <drawstuff/drawstuff.h>
 #include "texturepath.h"
-#include "plot.hpp"
 #include <assert.h>
 #include <vector>
 #include <string>
@@ -485,7 +484,7 @@ void printInstructions(void) {
     printf ("     c for 1 capsule.\n");
     printf ("     x for 50 capsules.\n");
     printf ("  To select an object, press space.\n");
-    printf ("  To unselect objects, press u.\n\n");
+    printf ("  To unselect objects, press u.\n");
     printf ("  To get the position/rotation of the selected object, press p.\n");
     printf ("  To toggle immobility of current objects, press k.\n\n");
 
@@ -501,6 +500,7 @@ void printInstructions(void) {
     printf("Metrics:\n");
     printf("  To show the volumetric packing fraction, press n.\n");
     printf("  To show the highest midpoint value, press h.\n");
+    printf("  To calculate mass density as a function of height, press m.\n\n");
 
     printf("Save/Load:\n");
     printf ("  To save the current state, press y.\n");
@@ -841,6 +841,10 @@ static void command (int cmd)
 
     // utility function
     if (cmd == 'z') {
+        return;
+    }
+
+    else if (cmd == 'm') {
         printFloatVector(massDensityByHeight(rad / 2));
         return;
     }
