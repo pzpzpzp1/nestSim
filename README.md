@@ -10,6 +10,13 @@
 * "Drop protocols"
 * Height/radius/orientation/density metrics
 * Other papers review
+* Calculate nematic order
+* Assumptions -- uniform size, BC's, rigid rods
+    * ODE equations of motion
+    * dropping randomly: kill rods that intersect w walls, or just drop them within 
+      1/2 * rad * AR of the wall
+    * totally classical, nothing thermal. what stochasticity and why.
+* Movies
 
 ## Contact Forces
 * These are not stable ([1](https://groups.google.com/d/msg/ode-users/kPfQIo-QOlE/I3EwRFI6BwAJ), [2](https://groups.google.com/d/msg/ode-users/OK1V4SXrb_k/ykJB7n7j4HIJ)) and can fluctuate wildly in value (e.g., select an object and hit 'f' multiple times to output the joint feedbacks)
@@ -33,6 +40,15 @@
 * Orientation density (as a function of height/radius)
 
 ## Stuff to try
+
+### Plots
+
+* Height/density as a function of AR
+* # of rattlers after compressing w/o gravity. Start with isotropic 
+  distribution in height.
+    * What % can be removed? Disks ~ 1-5%
+* No friction, gravity, or rattlers: (# contacts) = 5 * (# DOF)
+    * As a function of aspect ratio
 
 ### Effect of a single object removal
 

@@ -58,17 +58,20 @@ float cot(float theta) {
     return cos(theta) / sin(theta);
 }
 
-// x = boundary value requested
+// x = boundary value requested on horizontal ellipse
 // a = semi-major axis of ellipse = rad / cos(theta)
+// y = semi-minor axis of ellipse
 float ellipseIntegral(float x, float a, float b) {
     assert(std::abs(x) <= a);
     float res = 0.;
+
     if (a >= 0) {
         res += b * (x * sqrt(1 - pow(x / a, 2)) + a * asin(x / a));
     } else {
         a = -a;
         res -= b * (x * sqrt(1 - pow(x / a, 2)) + a * asin(x / a));
     }
+
     assert(!isnan(res));
 
 //    printf("\t\t(x, a, b, res): (%f, %f, %f, %f)\n", x, a, b, res);
@@ -80,6 +83,8 @@ float ellipseIntegral(float x, float a, float b) {
 // Based on area-density of a slice; no integration in the z-direction.
 // Because of this, make sure that dh < rad.
 std::vector<float> massDensityByHeight(float dh) {
+    bool log = false;
+
     int nslices = ceil(highestMidpoint() / dh);
     std::vector<float> density(nslices, 0);
 
@@ -97,7 +102,7 @@ std::vector<float> massDensityByHeight(float dh) {
 
     // Iterate through the objects
     for (int i = 0; i < obj.size(); i++) {
-        printf("Rod %d:\n", i);
+        if (log) { printf("Rod %d:\n", i); }
 
         std::vector<float> pos = position(i);
         std::vector<float> angles = orientationAngles(i);
@@ -117,7 +122,8 @@ std::vector<float> massDensityByHeight(float dh) {
         float h_high = pos[2] + rad + (0.5 * rad * AR * std::abs(cos(angles[0])));
         float h_low = pos[2] - rad - (0.5 * rad * AR * std::abs(cos(angles[0])));
 
-        // Sometimes the rods end up "intersecting with the floor"
+        // Sometimes the rods end up "intersecting with the floor". Push
+        // them above the floor.
         if (h_low < 0) {
             h_high = h_high + h_low;
             h_low = 0;
@@ -142,26 +148,22 @@ std::vector<float> massDensityByHeight(float dh) {
         assert(top_of_upper_cap >= bot_of_upper_cap);
         assert(top_of_lower_cap >= bot_of_lower_cap);
 
+        // Highest slice may be higher than the nominal pile height, currently
+        // defined by the highest midpoint.
         int lowest_slice = floor(h_low / dh);
         int highest_slice = floor(h_high / dh);
+        if (highest_slice >= nslices) {
+            highest_slice = nslices - 1;
+        }
 
 //        printf("low/high slice of %d: %d/%d\n", nslices, lowest_slice, highest_slice);
 
         // The end of the rod is below zero for some reason
         if (lowest_slice < 0) {
-            printf("\tLowest slice: %d\n", lowest_slice);
             throw std::runtime_error("Slice too low.");
-            continue;
         }
 
-        // The end of the rod sticks above the nominal height of the pile
-        // don't skip here; this is wrong
-//        if (highest_slice >= nslices) {
-//            printf("\tSlice too high.\n");
-//            continue;
-//        }
-
-        // the plane we're intersecting against the rod
+        // Prepare for iterating through planes
         float h0 = dh / 2. + EPSILON;
         float h, area, offset;
         float a, offset_low, offset_high, d_expr, d_low, d_high,
@@ -190,7 +192,7 @@ std::vector<float> massDensityByHeight(float dh) {
 
             // The rod is essentially horizontal (w/in fraction of a degree)
             if (contained && std::abs(M_PI/2 - angles[0]) < EPSILON) {
-                printf("\thorizontal          \t");
+                if (log) { printf("\thorizontal          \t"); }
                 offset = std::abs(h - pos[2]);
                 area = 2 * rad * sqrt(1. - pow(offset / rad, 2))
                          * (rad * AR)
@@ -203,7 +205,7 @@ std::vector<float> massDensityByHeight(float dh) {
                      && h >= top_of_lower_cap
                      && h <= bot_of_upper_cap
                      && h <= top_of_upper_cap) {
-                printf("\trectangular only\t");
+                if (log) { printf("\trectangular only\t"); }
                 area = M_PI * rad * a; // elliptical area
             }
 
@@ -213,7 +215,7 @@ std::vector<float> massDensityByHeight(float dh) {
                      && h <= top_of_lower_cap
                      && h <= bot_of_upper_cap
                      && h <= top_of_upper_cap) {
-                printf("\tbottom cap only    \t");
+                if (log) { printf("\tbottom cap only    \t"); }
                 area = M_PI * pow(n_low, 2);
             }
 
@@ -223,7 +225,7 @@ std::vector<float> massDensityByHeight(float dh) {
                      && h >= top_of_lower_cap
                      && h >= bot_of_upper_cap
                      && h >= top_of_upper_cap) {
-                printf("\ttop cap only        \t");
+                if (log) { printf("\ttop cap only        \t"); }
                 area = M_PI * pow(n_high, 2);
             }
 
@@ -233,9 +235,9 @@ std::vector<float> massDensityByHeight(float dh) {
                      && h <= top_of_lower_cap
                      && h <= bot_of_upper_cap
                      && h <= top_of_upper_cap) {
-                printf("\tbot + rectangular");
+                if (log) { printf("\tbot + rectangular"); }
                 if (h < mid_of_lower_cap) {
-                    printf("*");
+                    if (log) { printf("*"); }
                     area =    ellipseIntegral(a, a, rad)
                             - ellipseIntegral(a - e_low, a, rad)
                             + ellipseIntegral(n_low, n_low, n_low)
@@ -246,7 +248,7 @@ std::vector<float> massDensityByHeight(float dh) {
                             + ellipseIntegral(n_low, n_low, n_low)
                             - ellipseIntegral(n_low * cos(angles[0]), n_low, n_low);
                 }
-                printf("\t");
+                if (log) { printf("\t"); }
             }
 
             // Both caps
@@ -255,31 +257,38 @@ std::vector<float> massDensityByHeight(float dh) {
                      && h <= top_of_lower_cap
                      && h >= bot_of_upper_cap
                      && h <= top_of_upper_cap) {
-                printf("\tboth caps        \t");
+                if (log) { printf("\tboth caps        \t"); }
 
                 // Higher than both midpoints
                 if (h > mid_of_upper_cap) {
-//                    area =    ellipseIntegral()
-//                            - ellipseIntegral()
-//                            + ellipseIntegral()
-//                            - ellipseIntegral();
+                    // rectangular region, lower cap, upper cap
+                    area =    ellipseIntegral(d_high + rad * AR / sin(angles[0]), a, rad)
+                            - ellipseIntegral(d_high, a, rad)
+                            + ellipseIntegral(n_low, n_low, n_low)
+                            - ellipseIntegral(n_low * cos(angles[0]), n_low, n_low)
+                            + ellipseIntegral(n_high, n_high, n_high)
+                            - ellipseIntegral(-n_high * cos(angles[0]), n_high, n_high);
                 }
                 // Higher than the lower midpoint, lower than the higher midpoint
                 else if (mid_of_lower_cap <= h && h <= mid_of_upper_cap) {
-//                    area =    ellipseIntegral()
-//                            - ellipseIntegral()
-//                            + ellipseIntegral()
-//                            - ellipseIntegral();
+                    // rectangular region, lower cap, upper cap
+                    area =    ellipseIntegral(d_high, a, rad)
+                            - ellipseIntegral(-d_low, a, rad)
+                            + ellipseIntegral(n_low, n_low, n_low)
+                            - ellipseIntegral(n_low * cos(angles[0]), n_low, n_low)
+                            + ellipseIntegral(n_high, n_high, n_high)
+                            - ellipseIntegral(-n_high * cos(angles[0]), n_high, n_high);
                 }
                 // Lower than both midpoints
                 else {
-//                    area =    ellipseIntegral()
-//                            - ellipseIntegral()
-//                            + ellipseIntegral()
-//                            - ellipseIntegral();
+                    // rectangular region, lower cap, upper cap
+                    area =    ellipseIntegral(d_low + rad * AR / sin(angles[0]), a, rad)
+                            - ellipseIntegral(d_low, a, rad)
+                            + ellipseIntegral(n_low, n_low, n_low)
+                            - ellipseIntegral(-n_low * cos(angles[0]), n_low, n_low)
+                            + ellipseIntegral(n_high, n_high, n_high)
+                            - ellipseIntegral(n_high * cos(angles[0]), n_high, n_high);
                 }
-
-                area = 0;
             }
 
             // Rectangular + top cap
@@ -288,9 +297,9 @@ std::vector<float> massDensityByHeight(float dh) {
                      && h >= top_of_lower_cap
                      && h >= bot_of_upper_cap
                      && h <= top_of_upper_cap) {
-                printf("\ttop + rectangular");
+                if (log) { printf("\ttop + rectangular"); }
                 if (h > mid_of_upper_cap) {
-                    printf("*");
+                    if (log) { printf("*"); }
                     area =  ellipseIntegral(a, a, rad)
                             - ellipseIntegral(a - e_high, a, rad)
                             + ellipseIntegral(n_high, n_high, n_high)
@@ -301,15 +310,25 @@ std::vector<float> massDensityByHeight(float dh) {
                             + ellipseIntegral(n_high, n_high, n_high)
                             - ellipseIntegral(n_high * cos(angles[0]), n_high, n_high);
                 }
-                printf("\t");
+                if (log) { printf("\t"); }
+            }
+
+            else {
+                if (log) { printf("\tno intersection\n"); }
+                continue;
             }
 
             if (isnan(area)) {
-                printf("\tNaN area encountered.\n\n");
+                throw std::runtime_error("NaN area encountered.");
                 break;
             }
 
-            printf("\t%f\n", area);
+            if (log) { printf("\t%f\n", area); }
+
+            // This is the maximum possible area
+            if (area > (2 * rad) * (rad * AR) + M_PI * pow(rad, 2)) {
+                throw std::runtime_error("Area too large. Check your calculations.");
+            }
 
             density[j] += area;
         }
