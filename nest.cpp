@@ -347,14 +347,29 @@ static int fbnum = 0;
 
 // Return the spherical angles that correspond to the matrix R (of a rod that started aligned with the z axis)
 std::vector<float> sphericalAnglesFromR(const dMatrix3 R, bool print) {
+//    printf("SPHERICAL_ANGLES:\n");
+
     std::vector<float> sphericalAngles;
     dVector3 initial, final;
+    initial[0] = 0;
+    initial[1] = 0;
     initial[2] = 1;
     float theta, phi;
 
+//    printf("\tR:\t%f, %f, %f\n\t\t%f,%f,%f\n\t\t%f,%f,%f\n",
+//           R[0], R[1], R[2], R[4], R[5], R[6], R[8], R[9], R[10]);
+
     dMultiply0_331(final, R, initial);
 
-    theta = acos(final[2]);
+//    printf("final vector: [%f, %f, %f]\n", final[0], final[1], final[2]);
+//    printf("length: %f\n", sqrt(pow(final[0], 2) + pow(final[1], 2) + pow(final[2], 2)));
+
+//    printf("\tfinal: [%f, %f, %f]\n", final[0], final[1], final[2]);
+
+    // Enforce theta <= pi/2; we can do this because the rods are flippable
+    theta = acos(std::abs(final[2]));
+    theta = (theta <= M_PI / 2) ? theta : theta - M_PI / 2;
+//    printf("\ttheta: %f\n\n", theta);
     sphericalAngles.push_back(theta);
 
     phi = atan(final[1] / final[0]);
@@ -397,6 +412,7 @@ std::vector<float> position(int index) {
 
 std::vector<float> orientationAngles(int index) {
     std::vector<float> angles = sphericalAnglesFromR(dGeomGetRotation(obj[index].geom), false);
+
     return angles;
 }
 
@@ -825,8 +841,7 @@ static void command (int cmd)
 
     // utility function
     if (cmd == 'z') {
-        fprintf(fp, "num: %d\n", num);
-        fprintf(fp, "Number of objects: %lu\n", obj.size());
+        printFloatVector(massDensityByHeight(rad / 2));
         return;
     }
 
@@ -1135,7 +1150,7 @@ int main (int argc, char **argv)
   dWorldSetContactSurfaceLayer (world,0.001);
 
 //  assert(nwalls == 1 || nwalls == 5); // need floor or floor+sidewalls
-  dGeomID wall_D = dCreatePlane (space,0,0,1,0);
+  dGeomID wall_D = dCreatePlane (space,0,0,1,EPSILON);
   walls[0] = wall_D;
     obj.clear();
 
