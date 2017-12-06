@@ -481,7 +481,10 @@ bool collidesWithWall(dGeomID g0){
     return false;
 }
 
-void drop(void) {
+// copy-pasted code
+#include "pile.hpp"
+
+void drop(float hm = highest90percentileMidpoint()) {
     size_t i;
     int j,k;
     dMass m;
@@ -538,7 +541,7 @@ void drop(void) {
 
         // drops capsules from positions within [-1..1, -1..1, 2..3]
         dBodySetPosition (new_obj.body,
-                          dRandReal()*2-1,dRandReal()*2-1,dRandReal()+5);
+                          dRandReal()*2-1,dRandReal()*2-1, hm + rad*AR);
 
         // all orientations uniformly
         float xy_angle = dRandReal() * 2 * M_PI;
@@ -826,8 +829,7 @@ void LoadState(std::string filename){
     fclose(loadfile);
 }
 
-// copy-pasted code
-#include "pile.hpp"
+
 
 // called when a key pressed
 static void command (int cmd)
@@ -841,8 +843,8 @@ static void command (int cmd)
     }
 
     else if (cmd == 'm') {
-        fprintf(fp,"nothing to save. no rods exist.\n");
-        if(num==0) return;
+
+        if(num==0) {fprintf(fp,"nothing to save. no rods exist.\n"); return;}
         std::vector<float> mass_density = massDensityByHeight(rad / 2);
         printf("Mass density as a function of height: ");
         printFloatVector(mass_density); // print to terminal
@@ -863,7 +865,32 @@ static void command (int cmd)
 
         return;
     }
+    else if (cmd == 'o') {
 
+
+        if(num==0) {fprintf(fp,"nothing to save. no rods exist.\n"); return;}
+
+        std::vector<float> cbh = ContactsByHeight(rad/2.0);
+        printf("Number of contacts as a function of height: ");
+        printFloatVector(cbh); // print to terminal
+
+        // ugh
+        std::vector< std::vector<float> > data;
+        data.push_back(cbh);
+
+        // only one field
+        std::vector< std::string > fields;
+        fields.push_back("contacts_by_height");
+
+        printf("Saving contacts by height plot to file...\n");
+        saveCSV("plotter/contacts_density.csv", fields, data, true);
+
+        printf("Plotting contact density. Simulation paused.\n");
+        system("python plotter/plotter.py plotter/contacts_density.csv");
+        system("python3 plotter/plotter.py plotter/contacts_density.csv");
+
+        return;
+    }
     else if (cmd == 'i') {
         printInstructions();
         return;
@@ -918,7 +945,8 @@ static void command (int cmd)
 
     // Drop lots of capsules
     else if (cmd == 'x') {
-        for (j = 0; j < 50; j++) { drop(); }
+        float hm = highestMidpoint();
+        for (j = 0; j < 50; j++) { drop(hm); }
     }
 
     // toggle immobility
