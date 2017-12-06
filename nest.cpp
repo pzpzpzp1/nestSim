@@ -1,25 +1,3 @@
-/*************************************************************************
- *                                                                       *
- * Open Dynamics Engine, Copyright (C) 2001,2002 Russell L. Smith.       *
- * All rights reserved.  Email: russ@q12.org   Web: www.q12.org          *
- *                                                                       *
- * This library is free software; you can redistribute it and/or         *
- * modify it under the terms of EITHER:                                  *
- *   (1) The GNU Lesser General Public License as published by the Free  *
- *       Software Foundation; either version 2.1 of the License, or (at  *
- *       your option) any later version. The text of the GNU Lesser      *
- *       General Public License is included with this library in the     *
- *       file LICENSE.TXT.                                               *
- *   (2) The BSD-style license that is included with this library in     *
- *       the file LICENSE-BSD.TXT.                                       *
- *                                                                       *
- * This library is distributed in the hope that it will be useful,       *
- * but WITHOUT ANY WARRANTY; without even the implied warranty of        *
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the files    *
- * LICENSE.TXT and LICENSE-BSD.TXT for more details.                     *
- *                                                                       *
- *************************************************************************/
-
 // ./nest -notex -noshadows
 
 #include <ode/ode.h>
@@ -27,6 +5,8 @@
 #include "texturepath.h"
 #include <assert.h>
 #include <vector>
+#include <iostream>
+#include <fstream>
 #include <string>
 #include <cmath>
 #include <map>
@@ -236,53 +216,7 @@ std::vector< std::pair<float, float> > getFreeAngles(std::vector<float> theta, i
     return res;
 }
 
-//
-////<---- Convex Object
-//dReal planes[]= // planes for a cube, these should coincide with the face array
-//{
-//  1.0f ,0.0f ,0.0f ,0.25f,
-//  0.0f ,1.0f ,0.0f ,0.25f,
-//  0.0f ,0.0f ,1.0f ,0.25f,
-//  -1.0f,0.0f ,0.0f ,0.25f,
-//  0.0f ,-1.0f,0.0f ,0.25f,
-//  0.0f ,0.0f ,-1.0f,0.25f
-//  /*
-//   1.0f ,0.0f ,0.0f ,2.0f,
-//   0.0f ,1.0f ,0.0f ,1.0f,
-//   0.0f ,0.0f ,1.0f ,1.0f,
-//   0.0f ,0.0f ,-1.0f,1.0f,
-//   0.0f ,-1.0f,0.0f ,1.0f,
-//   -1.0f,0.0f ,0.0f ,0.0f
-//   */
-//};
-//const unsigned int planecount=6;
-//
-//dReal points[]= // points for a cube
-//{
-//  0.25f,0.25f,0.25f,  //  point 0
-//  -0.25f,0.25f,0.25f, //  point 1
-//
-//  0.25f,-0.25f,0.25f, //  point 2
-//  -0.25f,-0.25f,0.25f,//  point 3
-//
-//  0.25f,0.25f,-0.25f, //  point 4
-//  -0.25f,0.25f,-0.25f,//  point 5
-//
-//  0.25f,-0.25f,-0.25f,//  point 6
-//  -0.25f,-0.25f,-0.25f,// point 7
-//};
-//const unsigned int pointcount=8;
-//unsigned int polygons[] = //Polygons for a cube (6 squares)
-//{
-//  4,0,2,6,4, // positive X
-//  4,1,0,4,5, // positive Y
-//  4,0,1,3,2, // positive Z
-//  4,3,1,5,7, // negative X
-//  4,2,3,7,6, // negative Y
-//  4,5,4,6,7, // negative Z
-//};
-////----> Convex Object
-//
+
 //// select correct drawing functions
 
 #ifdef dDOUBLE
@@ -751,6 +685,50 @@ bool CheckStable(int rodInd) {
     return true;
 }
 
+
+// Save CSV file (delimited by spaces!) from a 2d vector
+//      dataInCols == true  means that the first field values live in data[0][i]
+//      dataInCols == false means that the first field values live in data[i][0]
+template <class T>
+void saveCSV(std::string filename,
+             std::vector< std::string > fieldnames,
+             std::vector< std::vector<T> > data,
+             bool dataInCols=true) {
+
+    if (dataInCols) { assert(fieldnames.size() == data.size()); }
+    else            { assert(fieldnames.size() == data[0].size()); }
+
+    std::ofstream outfile(filename);
+
+    // Print field names
+    for (int i = 0; i < fieldnames.size(); i++) {
+        outfile << fieldnames[i] << " ";
+    }
+    outfile << std::endl;
+
+    if (dataInCols) {
+        // Print data row by row, its dumb but works
+        for (int col = 0; col < data[0].size(); col++) {
+            for (int row = 0; row < data.size(); row++) {
+                outfile << data[row][col] << " ";
+            }
+            outfile << std::endl;
+        }
+    }
+    else {
+        for (int row = 0; row < data.size(); row++) {
+            for (int col = 0; col < data[0].size(); col++) {
+                outfile << data[row][col] << " ";
+            }
+            outfile << std::endl;
+        }
+    }
+
+    outfile.close();
+    return;
+}
+
+
 // Saves with the assumption of constant hardcoded mass, and walls
 void SaveState(std::string filename){
     FILE * savefile = fopen(filename.c_str(),"w");
@@ -845,7 +823,24 @@ static void command (int cmd)
     }
 
     else if (cmd == 'm') {
-        printFloatVector(massDensityByHeight(rad / 2));
+        std::vector<float> mass_density = massDensityByHeight(rad / 2);
+        printf("Mass density as a function of height: ");
+        printFloatVector(mass_density); // print to terminal
+
+        // ugh
+        std::vector< std::vector<float> > data;
+        data.push_back(mass_density);
+
+        // only one field
+        std::vector< std::string > fields;
+        fields.push_back("mass_density");
+
+        printf("Saving mass density plot to file...\n");
+        saveCSV("plotter/mass_density.csv", fields, data, true);
+
+        printf("Plotting mass density. Simulation paused.\n");
+        system("python plotter/plotter.py plotter/mass_density.csv");
+
         return;
     }
 
@@ -874,69 +869,6 @@ static void command (int cmd)
     else if (cmd == 'e') {
         LoadState(loadfilename);
         return;
-    }
-
-    // check all collisions
-    else if (cmd == 'w')
-    {
-//        dContact contact[MAX_CONTACTS];   // up to MAX_CONTACTS contacts per box-box
-//        for (i=0; i<MAX_CONTACTS; i++) {
-//            contact[i].surface.mode = dContactBounce | dContactSoftCFM;
-//            contact[i].surface.mu = dInfinity;
-//            contact[i].surface.mu2 = 0;
-//            contact[i].surface.bounce = 0.1;
-//            contact[i].surface.bounce_vel = 0.1;
-//            contact[i].surface.soft_cfm = 0.01;
-//        }
-//
-//        int totalc = 0; // total number of contacts
-//        fprintf(fp, "num objs %d\n", num);
-//
-//        // check all collisions between num x num objects
-//        for (i = 0; i < num; i ++){
-//            for (j = 0; j < num; j ++){
-//                dGeomID g1 = obj[i].geom;
-//                dGeomID g2 = obj[j].geom;
-//
-//                totalc += dCollide (g1,g2,MAX_CONTACTS,&contact[0].geom,
-//                                    sizeof(dContact));
-//            }
-//        }
-//        // doublecounting collisions should always be even number
-//        assert(totalc%2==0);
-//        totalc/=2;
-//
-//        if (totalc >= maxNumContactsSimulated )
-//        {
-//            maxNumContactsSimulated = totalc;
-//            fprintf(fp, "numContacts %d   maxcontacts %d \n\n", totalc, maxNumContactsSimulated);
-//        }
-    }
-
-    // Check collisions for selected object
-    else if (cmd == 'q') {
-//        if (selected >= 0) {
-//            fprintf(fp, "\tselected object: %d\n", selected);
-//
-//            // print object info (position, orientation, etc.)
-//            dVector3 pos;
-//            dMatrix3 R;
-//            dBodyCopyPosition(obj[selected].body, pos);
-//            dBodyCopyRotation(obj[selected].body, R);
-//
-//            // get contacts
-//            dContact contact_array[num];
-//            int num_contacts = 0;
-//            dGeomID g0 = obj[selected].geom;
-//            for (j = 0; j < num; j++) {
-//                dGeomID g1 = obj[j].geom;
-//                if (dCollide(g0, g1, MAX_CONTACTS, &contact_array[0].geom, sizeof(dContact)) > 0) {
-//                    num_contacts++;
-//                }
-//            }
-//
-//            fprintf(fp, "num contacts: %d\n\n", num_contacts);
-//        }
     }
 
     // Find if any rod is stable.
@@ -1118,6 +1050,31 @@ static void simLoop (int pause)
 
 int main (int argc, char **argv)
 {
+    // To check that saveCSV(...) works
+//    std::vector<int> xvals;
+//    xvals.push_back(0);
+//    xvals.push_back(1);
+//    xvals.push_back(2);
+//    xvals.push_back(3);
+//    std::vector<int> yvals;
+//    yvals.push_back(2);
+//    yvals.push_back(3);
+//    yvals.push_back(1);
+//    yvals.push_back(2);
+//
+//    std::vector< std::vector<int> > data;
+//    data.push_back(xvals);
+//    data.push_back(yvals);
+//
+//    std::vector< std::string > fields;
+//    fields.push_back("x");
+//    fields.push_back("y");
+//
+//    std::string filename = "plotter/example.csv";
+//
+//    saveCSV(filename, fields, data, true);
+
+
     // init global vars /***/
     maxNumContactsSimulated = 0;
     fp = stdout;
