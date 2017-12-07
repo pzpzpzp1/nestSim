@@ -885,8 +885,9 @@ static void command (int cmd)
         // only one field
         std::vector< std::string > fields;
         fields.push_back("contacts_by_height");
+    }
 
-    else if (cmd == 'o') {
+    else if (cmd == 'r') {
         std::vector<float> orientation_density = orientationDensityByHeight(rad / 2);
         printf("Orientation (polar angle) density as a function of height: ");
         printFloatVector(orientation_density); // print to terminal
