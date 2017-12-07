@@ -24,8 +24,20 @@ float highestMidpoint(void) {
         const dReal* pos = dGeomGetPosition(obj[i].geom);
         if (pos[2] > height) { height = pos[2]; }
     }
-
     return height;
+}
+
+float highest90percentileMidpoint(void) {
+    std::vector<float> heights; heights.clear();
+    heights.push_back(0);
+
+    for (int i = 0; i < obj.size(); i++) {
+        const dReal* pos = dGeomGetPosition(obj[i].geom);
+        heights.push_back(pos[2]);
+    }
+    std::sort(heights.begin(), heights.end(), orderbyfloat);
+
+    return heights[floor(heights.size()*.9)];
 }
 
 
@@ -87,6 +99,52 @@ float ellipseIntegral(float x, float a, float b) {
     return res;
 }
 
+std::vector<float> ContactsByHeight(float dh)
+{
+    // get contact heights
+    std::vector<float> heights; heights.clear();
+    std::vector<float> heightsByDh; heightsByDh.clear();
+
+    dContact contact_array[num+nwalls];
+    for (int rodInd = 0; rodInd < num; rodInd++) {
+        dGeomID g0 = obj[rodInd].geom;
+        for (int j = 0; j < rodInd; j++) {
+          dGeomID g1 = obj[j].geom;
+          int numc = dCollide(g0, g1, MAX_CONTACTS, &contact_array[0].geom, sizeof(dContact));
+          if (numc > 0) {
+              heights.push_back(contact_array[0].geom.pos[2]);
+          }
+        }
+
+        for (int j = 0; j < nwalls; j++) {
+          dGeomID g1 = walls[j];
+
+          int numc = dCollide(g0, g1, MAX_CONTACTS, &contact_array[0].geom, sizeof(dContact));
+          if (numc > 0) {
+              heights.push_back(contact_array[0].geom.pos[2]);
+          }
+        }
+    }
+    std::sort(heights.begin(), heights.end(), orderbyfloat);
+
+    // no contacts to display. all 0
+    if(heights.size()==0){return heightsByDh;}
+
+    // allocate and count how many heights in each dh bin
+    float msize = heights[heights.size()-1];
+
+    for(int i = 0; i < floor(msize/dh)+1; i++){
+        heightsByDh.push_back(0);
+    }
+
+    for(int i=0; i<heights.size();i++)
+    {
+        int dhInd = floor(heights[i]/dh);
+        heightsByDh[dhInd]+=1;
+    }
+    return heightsByDh;
+
+}
 
 // Calculate the mass density for height-parameterized slices dh-thick.
 // Based on area-density of a slice; no integration in the z-direction.

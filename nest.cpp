@@ -267,7 +267,7 @@ float rad = .03; // rod radius
 int AR = 50; // rod aspect ratio
 const int nwalls = 1; // number of walls. Should be 1 or 5
 dGeomID walls[nwalls]; // wall objects
-float bound = rad*AR/2.0+1.001; // shortest horz distance from walls to origin
+float bound = 1.2; //rad*AR/2.0+1.001; // shortest horz distance from walls to origin
 
 struct MyFeedback {
     dJointFeedback fb;
@@ -469,10 +469,27 @@ char locase (char c)
     else return c;
 }
 
-void drop(void) {
+bool collidesWithWall(dGeomID g0){
+
+    // get contacts with wall
+    dContact contact_array[nwalls];
+    for (int j = 0; j < nwalls; j++) {
+      dGeomID g1 = walls[j];
+
+      int numc = dCollide(g0, g1, MAX_CONTACTS, &contact_array[0].geom, sizeof(dContact));
+      if (numc > 0) {
+          return true;
+      }
+    }
+    return false;
+}
+
+// copy-pasted code
+#include "pile.hpp"
+
+void drop(float hm = highest90percentileMidpoint()) {
     size_t i;
     int j,k;
-    dReal sides[3];
     dMass m;
     int setBody = 0;
 
@@ -500,24 +517,8 @@ void drop(void) {
     MyObject new_obj;
 
     new_obj.body = dBodyCreate (world);
-    for (k=0; k<3; k++) sides[k] = dRandReal()*0.5+0.1;
 
-    dMatrix3 R;
 
-    // drops capsules from positions within [-1..1, -1..1, 2..3]
-    dBodySetPosition (new_obj.body,
-                      dRandReal()*2-1,dRandReal()*2-1,dRandReal()+5);
-
-    // all orientations uniformly
-    float xy_angle = dRandReal() * 2 * M_PI;
-    float h_angle = dRandReal() * 2 * M_PI;
-    float r_angle = dRandReal() * 2 * M_PI;
-
-    //dRFromAxisAndAngle(R, 1, 0, 0, 0.01);
-    dRFromAxisAndAngle (R, sin(xy_angle)*sin(h_angle), cos(xy_angle)*
-                        sin(h_angle), cos(h_angle),r_angle);
-
-    dBodySetRotation (new_obj.body, R);
 
     dBodySetData (new_obj.body,(void*) i);
 
@@ -537,14 +538,34 @@ void drop(void) {
 
     obj.push_back(new_obj);
 
+    // keep changing pos/orientation until rod doesn't collide with wall.
+    do{
+        dMatrix3 R;
+
+        // drops capsules from positions within [-1..1, -1..1, 2..3]
+        dBodySetPosition (new_obj.body,
+                          dRandReal()*2-1,dRandReal()*2-1, hm + rad*AR);
+
+        // all orientations uniformly
+        float xy_angle = dRandReal() * 2 * M_PI;
+        float h_angle = dRandReal() * 2 * M_PI;
+        float r_angle = dRandReal() * 2 * M_PI;
+
+        //dRFromAxisAndAngle(R, 1, 0, 0, 0.01);
+        dRFromAxisAndAngle (R, sin(xy_angle)*sin(h_angle), cos(xy_angle)*
+                            sin(h_angle), cos(h_angle),r_angle);
+
+        dBodySetRotation (new_obj.body, R);
+    } while(collidesWithWall(new_obj.geom));
+
     return;
 }
 
 bool CheckStable(int rodInd) {
-    fprintf(fp, "Checking stability of rod %d\n", rodInd);
+    //fprintf(fp, "Checking stability of rod %d\n", rodInd);
 
     // get contacts
-    dContact contact_array[num];
+    dContact contact_array[num+nwalls];
     float contactPos[num+nwalls][3]; // add 5 for colliding with walls and floor
     int num_contacts = 0;
     dGeomID g0 = obj[rodInd].geom;
@@ -605,7 +626,7 @@ bool CheckStable(int rodInd) {
     // sort the angles by their 'z_order' value
     theta = sortVectorBy(theta, z_order);
 
-    fprintf(fp, "\tOrdered angles: ");
+    //fprintf(fp, "\tOrdered angles: ");
     for (int i = 0; i < num_contacts; i++) {
         // re-center all angles so that the first angle is 0
         theta[i] -= theta[0];
@@ -701,7 +722,7 @@ void saveCSV(std::string filename,
     if (dataInCols) { assert(fieldnames.size() == data.size()); }
     else            { assert(fieldnames.size() == data[0].size()); }
 
-    std::ofstream outfile(filename);
+    std::ofstream outfile(filename.c_str());
 
     // Print field names
     for (int i = 0; i < fieldnames.size(); i++) {
@@ -811,8 +832,7 @@ void LoadState(std::string filename){
     fclose(loadfile);
 }
 
-// copy-pasted code
-#include "pile.hpp"
+
 
 // called when a key pressed
 static void command (int cmd)
@@ -827,6 +847,8 @@ static void command (int cmd)
     }
 
     else if (cmd == 'm') {
+
+        if(num==0) {fprintf(fp,"nothing to save. no rods exist.\n"); return;}
         std::vector<float> mass_density = massDensityByHeight(rad / 2);
         printf("Mass density as a function of height: ");
         printFloatVector(mass_density); // print to terminal
@@ -847,6 +869,22 @@ static void command (int cmd)
 
         return;
     }
+    else if (cmd == 'o') {
+
+
+        if(num==0) {fprintf(fp,"nothing to save. no rods exist.\n"); return;}
+
+        std::vector<float> cbh = ContactsByHeight(rad/2.0);
+        printf("Number of contacts as a function of height: ");
+        printFloatVector(cbh); // print to terminal
+
+        // ugh
+        std::vector< std::vector<float> > data;
+        data.push_back(cbh);
+
+        // only one field
+        std::vector< std::string > fields;
+        fields.push_back("contacts_by_height");
 
     else if (cmd == 'o') {
         std::vector<float> orientation_density = orientationDensityByHeight(rad / 2);
@@ -869,7 +907,7 @@ static void command (int cmd)
         
         return;
     }
-
+      
     else if (cmd == 'i') {
         printInstructions();
         return;
@@ -904,7 +942,7 @@ static void command (int cmd)
         for (int i = 0; i < num; i++) {
             bool isStable = CheckStable(i);
             if (isStable) {
-                fprintf(fp, "\t**************** Stable rod found! %d ****************\n", i);
+                //fprintf(fp, "\t**************** Stable rod found! %d ****************\n", i);
                 num_stable++;
             }
         }
@@ -924,7 +962,8 @@ static void command (int cmd)
 
     // Drop lots of capsules
     else if (cmd == 'x') {
-        for (j = 0; j < 5; j++) { drop(); }
+        float hm = highestMidpoint();
+        for (j = 0; j < 50; j++) { drop(hm); }
     }
 
     // toggle immobility

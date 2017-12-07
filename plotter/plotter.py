@@ -29,7 +29,7 @@ if __name__ == "__main__":
     data = np.genfromtxt(filename, delimiter=' ', names=True)
 
     # ordered set of field names
-    print data.dtype.names
+    print( data.dtype.names)
 
     # vector of data from first field
     # print data['x']
