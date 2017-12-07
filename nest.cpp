@@ -258,6 +258,9 @@ static int show_aabb = 0;	// show geom AABBs?
 static int show_contacts = 1;	// show contact points?
 static int random_pos = 1;	// drop objects from random position?
 
+static dReal MU = dInfinity;
+static dReal MU2 = 0;
+
 // global variables start now
 int maxNumContactsSimulated = 0;
 FILE * fp;
@@ -385,8 +388,8 @@ static void nearCallback (void *data, dGeomID o1, dGeomID o2)
     dContact contact[MAX_CONTACTS];   // up to MAX_CONTACTS contacts per box-box
     for (i=0; i<MAX_CONTACTS; i++) {
         contact[i].surface.mode = dContactBounce | dContactSoftCFM;
-        contact[i].surface.mu = dInfinity;
-        contact[i].surface.mu2 = 0;
+        contact[i].surface.mu = MU;// dInfinity;
+        contact[i].surface.mu2 = MU2;// 0;
         contact[i].surface.bounce = 0.1;
         contact[i].surface.bounce_vel = 0.1;
         contact[i].surface.soft_cfm = 0.01;
