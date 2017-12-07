@@ -434,7 +434,8 @@ void printInstructions(void) {
     printf("Metrics:\n");
     printf("  To show the volumetric packing fraction, press n.\n");
     printf("  To show the highest midpoint value, press h.\n");
-    printf("  To calculate mass density as a function of height, press m.\n\n");
+    printf("  To calculate mass density as a function of height, press m.\n");
+    printf("  To calculate orientation density as a function of height, press o.\n\n");
 
     printf("Save/Load:\n");
     printf ("  To save the current state, press y.\n");
@@ -844,6 +845,28 @@ static void command (int cmd)
         return;
     }
 
+    else if (cmd == 'o') {
+        std::vector<float> orientation_density = orientationDensityByHeight(rad / 2);
+        printf("Orientation (polar angle) density as a function of height: ");
+        printFloatVector(orientation_density); // print to terminal
+
+        // ugh
+        std::vector< std::vector<float> > data;
+        data.push_back(orientation_density);
+
+        // only one field
+        std::vector< std::string > fields;
+        fields.push_back("orientation_density");
+
+        printf("Saving mass density plot to file...\n");
+        saveCSV("plotter/orientation_density.csv", fields, data, true);
+
+        printf("Plotting orientation density. Simulation paused.\n");
+        system("python plotter/plotter.py plotter/orientation_density.csv");
+        
+        return;
+    }
+
     else if (cmd == 'i') {
         printInstructions();
         return;
@@ -898,7 +921,7 @@ static void command (int cmd)
 
     // Drop lots of capsules
     else if (cmd == 'x') {
-        for (j = 0; j < 50; j++) { drop(); }
+        for (j = 0; j < 5; j++) { drop(); }
     }
 
     // toggle immobility
