@@ -4,6 +4,7 @@
 
 * Aspect ratio is really 2x true aspect ratio because it multiplies the  
   radius, not diameter
+* Mass/orientation density functions are *not* normalized
 
 ## To-do
 

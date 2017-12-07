@@ -416,7 +416,8 @@ void printInstructions(void) {
     printf("Objects:\n");
     printf ("  To drop another object, press:\n");
     printf ("     c for 1 capsule.\n");
-    printf ("     x for 50 capsules.\n");
+    printf ("     x for 5 capsules.\n");
+    printf ("     z for 50 capsules.\n");
     printf ("  To select an object, press space.\n");
     printf ("  To unselect objects, press u.\n");
     printf ("  To get the position/rotation of the selected object, press p.\n");
@@ -432,6 +433,7 @@ void printInstructions(void) {
     printf ("  To see if the selected object is stable, press b.\n\n");
 
     printf("Metrics:\n");
+    printf("  To calculate the forces on all objects, press g.\n");
     printf("  To show the volumetric packing fraction, press n.\n");
     printf("  To show the highest midpoint value, press h.\n");
     printf("  To calculate mass density as a function of height, press m.\n");
@@ -820,6 +822,7 @@ static void command (int cmd)
 
     // utility function
     if (cmd == 'z') {
+        for (i = 0; i < 50; i++) { drop(); }
         return;
     }
 

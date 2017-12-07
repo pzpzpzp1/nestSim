@@ -93,6 +93,7 @@ float ellipseIntegral(float x, float a, float b) {
 // Because of this, make sure that dh < rad.
 std::vector<float> massDensityByHeight(float dh) {
     bool log = false;
+    bool err = false; // true = enable asserts/throws
 
     int nslices = ceil(highestMidpoint() / dh);
     std::vector<float> density(nslices, 0);
@@ -118,7 +119,7 @@ std::vector<float> massDensityByHeight(float dh) {
         std::vector<float> angles = orientationAngles(i);
 
         if (isnan(angles[0])) {
-            throw std::runtime_error("NaN angle encountered.");
+            if (err) { throw std::runtime_error("NaN angle encountered."); }
             continue;
         }
 
@@ -155,8 +156,10 @@ std::vector<float> massDensityByHeight(float dh) {
 //        printf("upper cap: [%f, %f, %f]\n", bot_of_upper_cap, mid_of_upper_cap, top_of_upper_cap);
 //        printf("lower cap: [%f, %f, %f]\n\n", bot_of_lower_cap, mid_of_lower_cap, top_of_lower_cap);
 
-        assert(top_of_upper_cap >= bot_of_upper_cap);
-        assert(top_of_lower_cap >= bot_of_lower_cap);
+        if (err) {
+            assert(top_of_upper_cap >= bot_of_upper_cap);
+            assert(top_of_lower_cap >= bot_of_lower_cap);
+        }
 
         // Highest slice may be higher than the nominal pile height, currently
         // defined by the highest midpoint.
@@ -169,9 +172,9 @@ std::vector<float> massDensityByHeight(float dh) {
 //        printf("low/high slice of %d: %d/%d\n", nslices, lowest_slice, highest_slice);
 
         // The end of the rod is below zero for some reason
-        if (lowest_slice < 0) {
-            throw std::runtime_error("Slice too low.");
-        }
+//        if (lowest_slice < 0) {
+//            throw std::runtime_error("Slice too low.");
+//        }
 
         // Prepare for iterating through planes
         float h0 = dh / 2. + EPSILON;
@@ -329,14 +332,14 @@ std::vector<float> massDensityByHeight(float dh) {
             }
 
             if (isnan(area)) {
-                throw std::runtime_error("NaN area encountered.");
+                if (err) { throw std::runtime_error("NaN area encountered."); }
                 break;
             }
 
             if (log) { printf("\t%f\n", area); }
 
             // This is the maximum possible area
-            if (area > (2 * rad) * (rad * AR) + M_PI * pow(rad, 2) + 100 * EPSILON) {
+            if (err && area > (2 * rad) * (rad * AR) + M_PI * pow(rad, 2) + 100 * EPSILON) {
                 throw std::runtime_error("Area too large. Check your calculations.");
             }
 
@@ -358,6 +361,7 @@ std::vector<float> massDensityByHeight(float dh) {
 // FYI, this is almost exactly copy-pasted from massDensityByHeight.
 std::vector<float> orientationDensityByHeight(float dh) {
     bool log = false;
+    bool err = false; // true = enable asserts/throws
 
     int nslices = ceil(highestMidpoint() / dh);
     std::vector<float> density(nslices, 0);
@@ -387,7 +391,7 @@ std::vector<float> orientationDensityByHeight(float dh) {
         std::vector<float> angles = orientationAngles(i);
 
         if (isnan(angles[0])) {
-            throw std::runtime_error("NaN angle encountered.");
+            if (err) { throw std::runtime_error("NaN angle encountered."); }
             continue;
         }
 
@@ -426,8 +430,10 @@ std::vector<float> orientationDensityByHeight(float dh) {
         //        printf("upper cap: [%f, %f, %f]\n", bot_of_upper_cap, mid_of_upper_cap, top_of_upper_cap);
         //        printf("lower cap: [%f, %f, %f]\n\n", bot_of_lower_cap, mid_of_lower_cap, top_of_lower_cap);
 
-        assert(top_of_upper_cap >= bot_of_upper_cap);
-        assert(top_of_lower_cap >= bot_of_lower_cap);
+        if (err) {
+            assert(top_of_upper_cap >= bot_of_upper_cap);
+            assert(top_of_lower_cap >= bot_of_lower_cap);
+        }
 
         // Highest slice may be higher than the nominal pile height, currently
         // defined by the highest midpoint.
@@ -440,9 +446,9 @@ std::vector<float> orientationDensityByHeight(float dh) {
         //        printf("low/high slice of %d: %d/%d\n", nslices, lowest_slice, highest_slice);
 
         // The end of the rod is below zero for some reason
-        if (lowest_slice < 0) {
-            throw std::runtime_error("Slice too low.");
-        }
+//        if (lowest_slice < 0) {
+//            throw std::runtime_error("Slice too low.");
+//        }
 
         // Prepare for iterating through planes
         float h0 = dh / 2. + EPSILON;
@@ -600,14 +606,14 @@ std::vector<float> orientationDensityByHeight(float dh) {
             }
 
             if (isnan(area)) {
-                throw std::runtime_error("NaN area encountered.");
+                if (err) { throw std::runtime_error("NaN area encountered."); }
                 break;
             }
 
             if (log) { printf("\t%f\n", area); }
 
             // This is the maximum possible area
-            if (area > (2 * rad) * (rad * AR) + M_PI * pow(rad, 2) + 100 * EPSILON) {
+            if (err && area > (2 * rad) * (rad * AR) + M_PI * pow(rad, 2) + 100 * EPSILON) {
                 throw std::runtime_error("Area too large. Check your calculations.");
             }
             
