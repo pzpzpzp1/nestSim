@@ -106,7 +106,8 @@ std::vector<float> massDensityByHeight(float dh) {
         slice_area = M_PI * pow(bound, 2);
     }
     else {
-        throw std::runtime_error("Can't take slices without boundaries.");
+        slice_area = 1.;
+        // throw std::runtime_error("Can't take slices without boundaries.");
     }
 
     // Iterate through the objects
@@ -374,7 +375,8 @@ std::vector<float> orientationDensityByHeight(float dh) {
         slice_area = M_PI * pow(bound, 2);
     }
     else {
-        throw std::runtime_error("Can't take slices without boundaries.");
+        slice_area = 1.;
+        // throw std::runtime_error("Can't take slices without boundaries.");
     }
 
     // Iterate through the objects

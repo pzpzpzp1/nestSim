@@ -265,7 +265,7 @@ std::string savefilename = "savestate.txt";
 std::string loadfilename = "savestate.txt";
 float rad = .03; // rod radius
 int AR = 50; // rod aspect ratio
-const int nwalls = 100; // number of walls. Should be 1 or 5
+const int nwalls = 1; // number of walls. Should be 1 or 5
 dGeomID walls[nwalls]; // wall objects
 float bound = rad*AR/2.0+1.001; // shortest horz distance from walls to origin
 
