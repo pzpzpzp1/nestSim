@@ -265,7 +265,7 @@ std::string savefilename = "savestate.txt";
 std::string loadfilename = "savestate.txt";
 float rad = .03; // rod radius
 int AR = 50; // rod aspect ratio
-const int nwalls = 100; // number of walls. Should be 1 or 5
+const int nwalls = 1; // number of walls. Should be 1 or 5
 dGeomID walls[nwalls]; // wall objects
 float bound = 1.2; //rad*AR/2.0+1.001; // shortest horz distance from walls to origin
 
@@ -416,7 +416,8 @@ void printInstructions(void) {
     printf("Objects:\n");
     printf ("  To drop another object, press:\n");
     printf ("     c for 1 capsule.\n");
-    printf ("     x for 50 capsules.\n");
+    printf ("     x for 5 capsules.\n");
+    printf ("     z for 50 capsules.\n");
     printf ("  To select an object, press space.\n");
     printf ("  To unselect objects, press u.\n");
     printf ("  To get the position/rotation of the selected object, press p.\n");
@@ -432,9 +433,11 @@ void printInstructions(void) {
     printf ("  To see if the selected object is stable, press b.\n\n");
 
     printf("Metrics:\n");
+    printf("  To calculate the forces on all objects, press g.\n");
     printf("  To show the volumetric packing fraction, press n.\n");
     printf("  To show the highest midpoint value, press h.\n");
-    printf("  To calculate mass density as a function of height, press m.\n\n");
+    printf("  To calculate mass density as a function of height, press m.\n");
+    printf("  To calculate orientation density as a function of height, press o.\n\n");
 
     printf("Save/Load:\n");
     printf ("  To save the current state, press y.\n");
@@ -839,6 +842,7 @@ static void command (int cmd)
 
     // utility function
     if (cmd == 'z') {
+        for (i = 0; i < 50; i++) { drop(); }
         return;
     }
 
@@ -882,15 +886,28 @@ static void command (int cmd)
         std::vector< std::string > fields;
         fields.push_back("contacts_by_height");
 
-        printf("Saving contacts by height plot to file...\n");
-        saveCSV("plotter/contacts_density.csv", fields, data, true);
+    else if (cmd == 'o') {
+        std::vector<float> orientation_density = orientationDensityByHeight(rad / 2);
+        printf("Orientation (polar angle) density as a function of height: ");
+        printFloatVector(orientation_density); // print to terminal
 
-        printf("Plotting contact density. Simulation paused.\n");
-        system("python plotter/plotter.py plotter/contacts_density.csv");
-        system("python3 plotter/plotter.py plotter/contacts_density.csv");
+        // ugh
+        std::vector< std::vector<float> > data;
+        data.push_back(orientation_density);
 
+        // only one field
+        std::vector< std::string > fields;
+        fields.push_back("orientation_density");
+
+        printf("Saving mass density plot to file...\n");
+        saveCSV("plotter/orientation_density.csv", fields, data, true);
+
+        printf("Plotting orientation density. Simulation paused.\n");
+        system("python plotter/plotter.py plotter/orientation_density.csv");
+        
         return;
     }
+      
     else if (cmd == 'i') {
         printInstructions();
         return;

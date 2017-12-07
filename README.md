@@ -4,6 +4,7 @@
 
 * Aspect ratio is really 2x true aspect ratio because it multiplies the  
   radius, not diameter
+* Mass/orientation density functions are *not* normalized
 
 ## To-do
 
@@ -44,7 +45,7 @@
 ### Plots
 
 * Height/density as a function of AR
-* # of rattlers after compressing w/o gravity. Start with isotropic 
+* Number of rattlers after compressing w/o gravity. Start with isotropic 
   distribution in height.
     * What % can be removed? Disks ~ 1-5%
 * No friction, gravity, or rattlers: (# contacts) = 5 * (# DOF)
