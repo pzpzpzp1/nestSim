@@ -18,10 +18,51 @@ void removeWall(int wall_index) {
 }
 
 
-//MyObject createCeiling(void) {
-//    // Initial height of 2.5 * bound
-//    // Give it an intial velocity
-//}
+MyObject createCeiling(void) {
+    // Initial height of 3 * bound
+    // Give it an intial velocity
+
+    float ceil_radius = 0.98 * bound;
+    float ceil_length = 3.;
+
+    size_t i;
+    int j,k;
+    dMass m;
+    int setBody = 0;
+
+    MyObject new_obj;
+
+    new_obj.body = dBodyCreate(world);
+    dBodySetLinearVel(new_obj.body, 0., 0., -0.5);
+    dBodySetData (new_obj.body,(void*) i);
+    dMassSetCylinder (&m,DENSITY,3, ceil_radius, ceil_length);
+
+    new_obj.geom = dCreateCylinder(space, ceil_radius, ceil_length);
+    dGeomSetBody(new_obj.geom, new_obj.body);
+
+    dBodySetMass (new_obj.body, &m);
+
+    dMatrix3 R;
+
+    dBodySetPosition (new_obj.body,
+                      0., 0., 3. * bound + (0.5) * ceil_length);
+
+//    float xy_angle, h_angle, r_angle;
+//
+//        xy_angle = dRandReal() * 2. * M_PI;
+//        h_angle = dRandReal() * 2. * M_PI;
+//        r_angle = dRandReal() * 2. * M_PI;
+//    }
+//
+//    //dRFromAxisAndAngle(R, 1, 0, 0, 0.01);
+//    dRFromAxisAndAngle (R, sin(xy_angle)*sin(h_angle), cos(xy_angle)*
+//                        sin(h_angle), cos(h_angle),r_angle);
+//    
+//    dBodySetRotation (new_obj.body, R);
+
+    return new_obj;
+
+}
 
 
 // Return true if the ceiling cylinder has stopped moving
@@ -61,6 +102,9 @@ void jenga_setup(int N) {
     // Turn off gravity
     dWorldSetGravity(world, 0., 0., 0.);
 
+    // Increase damping
+    dWorldSetLinearDamping(world, 0.001);
+
     // Turn off friction
     MU = 0;
     MU2 = 0;
@@ -69,7 +113,7 @@ void jenga_setup(int N) {
     placeRods(N);
 
     // Create ceiling and give it an initial velocity downward
-//    MyObject ceiling = createCeiling();
+    jenga_ceiling = createCeiling();
 
     return;
 }

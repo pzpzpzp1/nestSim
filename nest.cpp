@@ -260,7 +260,9 @@ static int random_pos = 1;	// drop objects from random position?
 
 static dReal MU = dInfinity;
 static dReal MU2 = 0;
-static bool batch_flag = true;
+static bool batch_flag = false;
+static bool jenga_flag = false;
+static MyObject jenga_ceiling;
 
 // global variables start now
 int maxNumContactsSimulated = 0;
@@ -1130,7 +1132,9 @@ void drawGeom (dGeomID g, const dReal *pos, const dReal *R, int show_aabb)
         dsDrawCapsule (pos,R,length,radius);
     }
     else if (type == dCylinderClass) {
-        // #TODO
+        dReal radius, length;
+        dGeomCylinderGetParams(g, &radius, &length);
+        dsDrawCylinder(pos, R, length, radius);
     }
 
     if (show_aabb) {
@@ -1220,6 +1224,18 @@ static void simLoop (int pause)
             drawGeom (obj[i].geom,0,0,show_aabb);
         }
     }
+    if (jenga_flag) {
+        // make sure that the ceiling only ever moves downward
+        const dReal* velocity = dBodyGetLinearVel(jenga_ceiling.body);
+        if (velocity[2] > 0) {
+//            printf("positive z velocity for jenga ceiling\n\n");
+            dBodySetLinearVel(jenga_ceiling.body, 0., 0., 0.);
+        }
+
+        // draw the ceiling
+        dsSetColor(0.6, 0.6, 0.6);
+        drawGeom(jenga_ceiling.geom, 0, 0, show_aabb);
+    }
     return;
 }
 
@@ -1229,8 +1245,9 @@ int main(int argc, char **argv)
 
     fp = stdout;
     if (argc == 1) {
+        printf("jenga run\n");
         batch_flag = false;
-        printf("not a batch run1\n");
+        jenga_flag = true;
         bound = 2.5;
 //        _MU = 1000000;
 //        dropTheta = M_PI/2; // 1.57
@@ -1238,6 +1255,7 @@ int main(int argc, char **argv)
 //        hasboundary = true;
     }
     else if(argc == 5){
+        printf("batch run\n");
         batch_flag = true;
         _MU = atof(argv[1]);
         dropTheta = atof(argv[2]);
@@ -1362,7 +1380,7 @@ int main(int argc, char **argv)
         }
     }
 
-    if (!batch_flag) {
+    if (!batch_flag && jenga_flag) {
         jenga_setup(100);
     }
 
