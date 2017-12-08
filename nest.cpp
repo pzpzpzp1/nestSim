@@ -258,6 +258,9 @@ static int show_aabb = 0;	// show geom AABBs?
 static int show_contacts = 1;	// show contact points?
 static int random_pos = 1;	// drop objects from random position?
 
+static dReal MU = dInfinity;
+static dReal MU2 = 0;
+
 // global variables start now
 int maxNumContactsSimulated = 0;
 FILE * fp;
