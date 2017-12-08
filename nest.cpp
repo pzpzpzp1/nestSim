@@ -1137,7 +1137,7 @@ static void simLoop (int pause)
     if(simloopcount % simloopmod == 0 && num < 300){
         dropBatch();
     }
-    if(simloopcount > 4300){
+    if(simloopcount > 4500){
         save_all();
         assert(0); // not the most elegant way to leave a program i know.
     }
