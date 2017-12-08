@@ -6,7 +6,9 @@
 #   'mass_density'
 #   'orientation_density'
 #   'contact_density'
-#   'scalar_data'
+#   dont use this: 'scalar_data' but use one of the two below:
+#       'packing_fraction'
+#       'stable_fraction'
 #
 # fields:
 #   'mu'
@@ -47,6 +49,14 @@ if __name__ == "__main__":
     field = input.field # ['field']
     datatype = input.datatype # ['datatype']
 
+    # deal with scalar data
+    if datatype == 'packing_fraction':
+        scalartype = 'packing_fraction'
+        datatype = 'scalar_data'
+    elif datatype == 'stable_fraction':
+        scalartype = 'stable_fraction'
+        datatype = 'scalar_data'
+
     # substrings to check all other fields
     otherfields = [input.ofield0.replace('=', '_'),
                    input.ofield1.replace('=', '_'),
@@ -58,6 +68,7 @@ if __name__ == "__main__":
     filenames = os.listdir(filepath)
     vals = []
     files = []
+
 
     for filename in filenames:
         # pick out files matching the datatype and other fields
@@ -76,6 +87,8 @@ if __name__ == "__main__":
                     vals.append(fieldval)
                     files.append(filepath + filename)
 
+    # Sort the field values & filenames by field values
+    vals, files = (list(t) for t in zip(*sorted(zip(vals, files))))
 
     print(field + ' values: ')
     print(vals)
@@ -88,56 +101,42 @@ if __name__ == "__main__":
     data_array = [np.genfromtxt(file, delimiter=',')
                   for file in files]
 
-    # plot the data
-    for (ind, data) in enumerate(data_array):
-        data_label = field + ' = ' + str(vals[ind])
-        plt.plot(data, label=data_label)
 
-    plt.xlabel('x_axis')
-    plt.ylabel('y_axis')
+    # will need to handle data differently for scalar_data
+    if datatype == 'scalar_data':
+        # get packing fraction
+        if scalartype == 'packing_fraction':
+            data_array = [d[0] for d in data_array]
 
-    plt.title(datatype + ' as a function of ' + field)
-    plt.grid(True)
-    plt.legend()
+        # get stable fraction
+        elif scalartype == 'stable_fraction':
+            data_array = [d[1] for d in data_array]
 
-    plt.show()
+        # plot the data
+        plt.plot(vals, data_array)
+        plt.xlabel(field)
+        plt.ylabel(scalartype)
 
-
-
-
-
-
-
-
-#    data = np.genfromtxt(filename, delimiter=' ', names=False)
-
-    # ordered set of field names
-    # print( data.dtype.names)
-
-    # vector of data from first field
-    # print data['x']
-    # print data[data.dtype.names[0]]     # same thing
-
-    # single vector of data
-#    if len(data.dtype) == 1:
-#        plt.plot(data[data.dtype.names[0]])
-#        plt.xlabel('#')
-#        plt.ylabel(data.dtype.names[0])
-#
-#    # plot first two fields
-#    else:
-#        plt.plot(data[data.dtype.names[0]], data[data.dtype.names[1]])
-#        plt.xlabel(data.dtype.names[0])
-#        plt.ylabel(data.dtype.names[1])
-#
-#    plt.title('title')
-#    plt.grid(True)
-#    plt.savefig(filename[:-4] + '.png')
-#    plt.show()
+        plt.title(scalartype + ' as a function of ' + field)
+        plt.grid(True)
+        plt.show()
 
 
+    # handle vector data
+    else:
+        # plot the data
+        for (ind, data) in enumerate(data_array):
+            data_label = field + ' = ' + str(vals[ind])
+            plt.plot(data, label=data_label)
 
+        plt.xlabel('x_axis')
+        plt.ylabel('y_axis')
 
+        plt.title(datatype + ' as a function of ' + field)
+        plt.grid(True)
+        plt.legend()
+
+        plt.show()
 
 
 

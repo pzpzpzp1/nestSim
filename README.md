@@ -8,10 +8,8 @@
 
 ## To-do
 
-* "Drop protocols"
-* Height/radius/orientation/density metrics
+* Need to normalize densities somehow
 * Other papers review
-* Calculate nematic order
 * Assumptions -- uniform size, BC's, rigid rods
     * ODE equations of motion
     * dropping randomly: kill rods that intersect w walls, or just drop them within 
