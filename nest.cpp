@@ -20,7 +20,7 @@
 #pragma warning(disable:4244 4305)  // for VC++, no precision loss complaints
 #endif
 
-#include "icosahedron_geom.h"
+//#include "icosahedron_geom.h"
 
 float fmodulo(float a, float b) {
     float res = a - b * floor(a / b);
@@ -260,6 +260,7 @@ static int random_pos = 1;	// drop objects from random position?
 
 static dReal MU = dInfinity;
 static dReal MU2 = 0;
+static bool batch_flag = true;
 
 // global variables start now
 int maxNumContactsSimulated = 0;
@@ -270,13 +271,13 @@ float rad = .03; // rod radius
 
 int simloopcount = 0;
 int simloopmod = 70;
-float AR = 50; // rod aspect ratio
+float AR = 50; // rod aspect ratio default value
 int nwalls = 100; // number of walls. Should be 1 or 5 or 100
 dGeomID *walls; // wall objects
 float bound = rad*AR; //rad*AR/2.0+1.001; // shortest horz distance from walls to origin
-float _MU;
-float dropTheta;
-bool hasboundary;
+float _MU = 10000.; // default value
+float dropTheta = 0.; // default value
+bool hasboundary = true; // set default to true
 
 std::string contactdensityfilename;
 std::string massdensityfilename;
@@ -538,7 +539,12 @@ void drop(float hm = highest90percentileMidpoint(), float xyang = dRandReal()*2*
 
     new_obj.body = dBodyCreate (world);
 
-    dBodySetLinearVel(new_obj.body, 0,0,-1);
+    if (batch_flag) {
+        dBodySetLinearVel(new_obj.body, 0,0,-1);
+    }
+    else {
+        dBodySetLinearVel(new_obj.body, 0., 0., 0.);
+    }
 
 
 
@@ -568,12 +574,19 @@ void drop(float hm = highest90percentileMidpoint(), float xyang = dRandReal()*2*
         dBodySetPosition (new_obj.body,
                           dRandReal()*2-1,dRandReal()*2-1, hm + rad*AR);
 
-        // all orientations uniformly
-        float xy_angle = xyang + dRandReal() * M_PI / 6 - M_PI / 12;
-        float h_angle = M_PI/2;// dRandReal() * 2 * M_PI;
-        float r_angle = dRandReal() * 2 * M_PI;
+        float xy_angle, h_angle, r_angle;
 
-        r_angle = dropTheta + dRandReal() * M_PI/6-M_PI/12;
+        // all orientations uniformly
+        if (batch_flag) {
+            xy_angle = xyang + dRandReal() * M_PI / 6 - M_PI / 12;
+            h_angle = M_PI/2;// dRandReal() * 2 * M_PI;
+            r_angle = dropTheta + dRandReal() * M_PI/6-M_PI/12;
+        }
+        else {
+            xy_angle = dRandReal() * 2. * M_PI;
+            h_angle = dRandReal() * 2. * M_PI;
+            r_angle = dRandReal() * 2. * M_PI;
+        }
 
         //dRFromAxisAndAngle(R, 1, 0, 0, 0.01);
         dRFromAxisAndAngle (R, sin(xy_angle)*sin(h_angle), cos(xy_angle)*
@@ -957,6 +970,9 @@ void save_all(){
 }
 
 
+#include "jenga.hpp"
+
+
 // called when a key pressed
 static void command (int cmd)
 {
@@ -1113,6 +1129,9 @@ void drawGeom (dGeomID g, const dReal *pos, const dReal *R, int show_aabb)
         dGeomCapsuleGetParams (g,&radius,&length);
         dsDrawCapsule (pos,R,length,radius);
     }
+    else if (type == dCylinderClass) {
+        // #TODO
+    }
 
     if (show_aabb) {
         // draw the bounding box for this geom
@@ -1134,70 +1153,74 @@ void drawGeom (dGeomID g, const dReal *pos, const dReal *R, int show_aabb)
 
 static void simLoop (int pause)
 {
-    simloopcount++;
-    if(simloopcount % simloopmod == 0 && num < 300){
-        dropBatch();
-    }
-    if(simloopcount % 300 == 0){
-        fprintf(fp,"simloop %d\n", simloopcount);
-    }
-    if(simloopcount > 4500){
-        save_all();
-        assert(0); // not the most elegant way to leave a program i know.
+    // Keep track of sim loop if running a batch
+    if (batch_flag) {
+        simloopcount++;
+        if(simloopcount % simloopmod == 0 && num < 300){
+            dropBatch();
+        }
+        if(simloopcount % 300 == 0){
+            fprintf(fp,"simloop %d\n", simloopcount);
+        }
+        if(simloopcount > 4500){
+            save_all();
+            assert(0); // not the most elegant way to leave a program i know.
+        }
     }
 
     //dsSetColor (0,0,2);
     dSpaceCollide (space,0,&nearCallback);
     if (!pause) { dWorldQuickStep (world, 0.02); }
 
-    if (doFeedback)
-    {
-        if (fbnum>MAX_FEEDBACKNUM) {
-            printf("joint feedback buffer overflow!\n");
-        }
-        else
-        {
-            // Sum the forces on the object
-            dVector3 sum = {0, 0, 0};
+//    if (doFeedback)
+//    {
+//        if (fbnum>MAX_FEEDBACKNUM) {
+//            printf("joint feedback buffer overflow!\n");
+//        }
+//        else
+//        {
+//            // Sum the forces on the object
+//            dVector3 sum = {0, 0, 0};
+//
+//            for (int i = 0; i < fbnum; i++) {
+//                dReal* f = feedbacks[i].first ? feedbacks[i].fb.f1 : feedbacks[i].fb.f2;
+//                printf("%f %f %f\n", f[0], f[1], f[2]);
+//                sum[0] += f[0];
+//                sum[1] += f[1];
+//                sum[2] += f[2];
+//            }
+//            printf("Sum: %f %f %f\n", sum[0], sum[1], sum[2]);
+//
+//            // Gravitational force on the object
+//            dMass m;
+//            dBodyGetMass(obj[selected].body, &m);
+//            printf("Gravitational force: %f\n", GRAVITY*m.mass);
+//        }
+//
+//        // Reset
+//        doFeedback = 0;
+//        fbnum = 0;
+//    }
 
-            for (int i = 0; i < fbnum; i++) {
-                dReal* f = feedbacks[i].first ? feedbacks[i].fb.f1 : feedbacks[i].fb.f2;
-                printf("%f %f %f\n", f[0], f[1], f[2]);
-                sum[0] += f[0];
-                sum[1] += f[1];
-                sum[2] += f[2];
+    // remove all contact joints
+    dJointGroupEmpty (contactgroup);
+
+    // Draw objects if NOT a batch run
+    if (!batch_flag) {
+        dsSetColor (1,1,0);
+        dsSetTexture (DS_WOOD);
+
+        for (int i=0; i<num; i++) {
+            if (i==selected) {
+                dsSetColor (0,0.7,1);
             }
-            printf("Sum: %f %f %f\n", sum[0], sum[1], sum[2]);
-
-            // Gravitational force on the object
-            dMass m;
-            dBodyGetMass(obj[selected].body, &m);
-            printf("Gravitational force: %f\n", GRAVITY*m.mass);
+            else {
+                dsSetColor (1,1,0);
+            }
+            drawGeom (obj[i].geom,0,0,show_aabb);
         }
-
-        // Reset
-        doFeedback = 0;
-        fbnum = 0;
     }
-
-  // remove all contact joints
-  dJointGroupEmpty (contactgroup);
-/*
-  dsSetColor (1,1,0);
-  dsSetTexture (DS_WOOD);
-
-  for (int i=0; i<num; i++) {
-
-      if (i==selected) {
-          dsSetColor (0,0.7,1);
-      }
-      else {
-          dsSetColor (1,1,0);
-      }
-      drawGeom (obj[i].geom,0,0,show_aabb);
-  }
-*/
-  return;
+    return;
 }
 
 
@@ -1205,29 +1228,33 @@ int main(int argc, char **argv)
 {
 
     fp = stdout;
-    if(argc == 1)
-    {
-        _MU = 1000000;
-        dropTheta = M_PI/2; // 1.57
-        AR = 50;
-        hasboundary = true;
+    if (argc == 1) {
+        batch_flag = false;
+        printf("not a batch run1\n");
+        bound = 2.5;
+//        _MU = 1000000;
+//        dropTheta = M_PI/2; // 1.57
+//        AR = 50;
+//        hasboundary = true;
     }
     else if(argc == 5){
+        batch_flag = true;
         _MU = atof(argv[1]);
         dropTheta = atof(argv[2]);
         AR = atof(argv[3]);
         hasboundary = atoi(argv[4]) != 0;
+        bound = 1.;
     }
     else
     {
-        fprintf(fp, "need 4 arguments! friction, drop angle, AR, boundary\n");
+        fprintf(fp, "need 0, 1, or 4 arguments! friction, drop angle, AR, boundary\n");
         return 0;
     }
     fprintf(fp, "nest sim started with parameters %f %f %f %d\n",_MU, dropTheta, AR, hasboundary);
 
     nwalls = 100;
     walls = (dGeomID *) malloc(sizeof(dGeomID)*nwalls);//[nwalls]
-    bound = 1;//AR * rad / 2 + 1;
+    //bound = 1;//AR * rad / 2 + 1;
     if(!hasboundary){bound = 10000;} // there's some bug with not initializing the walls. so we can just secretly make them really far.
     //fprintf(fp, "walls initiated\n");
 
@@ -1333,6 +1360,10 @@ int main(int argc, char **argv)
             walls[i] = dCreatePlane(space, cos(angle), sin(angle), 0, -bound);
             angle += angle_step;
         }
+    }
+
+    if (!batch_flag) {
+        jenga_setup(100);
     }
 
   // run simulation
