@@ -431,6 +431,7 @@ static void nearCallback (void *data, dGeomID o1, dGeomID o2)
 }
 
 void printInstructions(void) {
+
     printf("Objects:\n");
     printf ("  To drop another object, press:\n");
     printf ("     c for 1 capsule.\n");
@@ -475,9 +476,9 @@ static void start()
 
   static float xyz[3] = {2.1640f,-1.3079f,1.7600f};
   static float hpr[3] = {125.5000f,-17.0000f,0.0000f};
-  dsSetViewpoint (xyz,hpr);
+  //dsSetViewpoint (xyz,hpr);
 
-    printInstructions();
+  //  printInstructions();
 }
 
 
@@ -931,7 +932,7 @@ void save_orientation_density(){
 
 void save_scalars(){
     // save packing fraction and stable percentage.
-    FILE * scalarfp = fopen((scalarsfilename+filetypename).c_str(),"w");
+    FILE * scalarfp = fopen((scalarsfilename+parameters+filetypename).c_str(),"w");
     num_stable = 0;
     for (int i = 0; i < num; i++) {
         bool isStable = CheckStable(i);
@@ -1137,12 +1138,15 @@ static void simLoop (int pause)
     if(simloopcount % simloopmod == 0 && num < 300){
         dropBatch();
     }
+    if(simloopcount % 300 == 0){
+        fprintf(fp,"simloop %d\n", simloopcount);
+    }
     if(simloopcount > 4500){
         save_all();
         assert(0); // not the most elegant way to leave a program i know.
     }
 
-    dsSetColor (0,0,2);
+    //dsSetColor (0,0,2);
     dSpaceCollide (space,0,&nearCallback);
     if (!pause) { dWorldQuickStep (world, 0.02); }
 
@@ -1178,7 +1182,7 @@ static void simLoop (int pause)
 
   // remove all contact joints
   dJointGroupEmpty (contactgroup);
-
+/*
   dsSetColor (1,1,0);
   dsSetTexture (DS_WOOD);
 
@@ -1192,7 +1196,7 @@ static void simLoop (int pause)
       }
       drawGeom (obj[i].geom,0,0,show_aabb);
   }
-
+*/
   return;
 }
 
@@ -1225,7 +1229,7 @@ int main(int argc, char **argv)
     walls = (dGeomID *) malloc(sizeof(dGeomID)*nwalls);//[nwalls]
     bound = 1;//AR * rad / 2 + 1;
     if(!hasboundary){bound = 10000;} // there's some bug with not initializing the walls. so we can just secretly make them really far.
-    fprintf(fp, "walls initiated\n");
+    //fprintf(fp, "walls initiated\n");
 
     contactdensityfilename = "outputdata/contact_density";
     massdensityfilename = "outputdata/mass_density";
@@ -1274,7 +1278,7 @@ int main(int argc, char **argv)
     fn.command = &command;
     fn.stop = 0;
     fn.path_to_textures = DRAWSTUFF_TEXTURE_PATH;
-    
+
     // create world
     dInitODE2(0);
     world = dWorldCreate();
@@ -1320,7 +1324,7 @@ int main(int argc, char **argv)
         walls[4]=wall_W;
     }
     else if (nwalls > 5) {
-        fprintf(fp, "making many walls\n");
+        //fprintf(fp, "making many walls\n");
         // put in like a ton of walls
         float angle_step = 2 * M_PI / (nwalls - 1.);
         float angle = 0;
