@@ -17,58 +17,32 @@
 #include <stdio.h>
 
 using namespace std;
-/*
-const char* inputStr(float f, float d, float a, int b) {
-    std::stringstream stream;
-
-    stream  << "./nest ";
-
-    stream  << std::fixed
-            << std::setprecision(5) // five total characters. e.g. pi --> "3.14"
-            << f << " "
-            << d << " "
-            << a << " ";
-
-    stream  << std::fixed
-            << std::setprecision(1)
-            << b;
-
-//    std::cout << stream.str().c_str() << std::endl;
-
-    return stream.str().c_str();
-}
-*/
 
 
 int main(void) {
 
     char buffer[1000];
 
-    float friction[5]   = { atan(0.) , atan(0.25), atan(0.5), atan(0.75), atan(1) };
-    float dropangle[5]  = { 0.,
-                            1. * M_PI / 8.,
-                            2. * M_PI / 8.,
-                            3. * M_PI / 8.,
-                            4. * M_PI / 8.,
+    float friction[9]   = { 0, .05, .1, .15,.2,.25,.3,.35,.4 };
+    float dropangle[1]  = { //0.,
+                            1. * M_PI / 8.//,
+                            //2. * M_PI / 8.,
+                            //3. * M_PI / 8.,
+                            //4. * M_PI / 8.,
                           };
-    float AR[6]         = { 0.01 , 1., 3., 8., 25., 55. };
-    int boundary[2]     = { 0 , 1 };
+    float AR[1]         = { 55 };
+    int boundary[1]     = { 1 };
 
 
-    for (int f = 0; f < 5; f++) {
-        for (int d = 0; d < 5; d++) {
-            for (int a = 0; a < 6; a++) {
-                for (int b = 0; b < 2; b++) {
+    for (int f = 0; f < 9; f++) {
+        for (int d = 0; d < 1; d++) {
+            for (int a = 0; a < 1; a++) {
+                for (int b = 0; b < 1; b++) {
 
                     printf("(friction, dropangle, AR, boundary) = (%f, %f, %f, %d)\n",
                            friction[f], dropangle[d], AR[a], boundary[b]);
 
                     sprintf(buffer,"./nest %f %f %f %d\n",friction[f], dropangle[d], AR[a], boundary[b]);
-
-                    //const char* call = inputStr(friction[f], dropangle[d],
-                    //                            AR[a], boundary[b]);
-
-                    //printf("boooo \n%s\n", buffer);
 
                     system(buffer);
 

@@ -1276,10 +1276,10 @@ int main(int argc, char **argv)
     if(!hasboundary){bound = 10000;} // there's some bug with not initializing the walls. so we can just secretly make them really far.
     //fprintf(fp, "walls initiated\n");
 
-    contactdensityfilename = "outputdata/contact_density";
-    massdensityfilename = "outputdata/mass_density";
-    orientationdensityfilename = "outputdata/orientation_density";
-    scalarsfilename = "outputdata/scalar_data";
+    contactdensityfilename = "outputdata2/contact_density";
+    massdensityfilename = "outputdata2/mass_density";
+    orientationdensityfilename = "outputdata2/orientation_density";
+    scalarsfilename = "outputdata2/scalar_data";
     pythonplotter = "python3 plotter/plotter.py ";
     filetypename = ".csv";
     parameters = "_mu_" + std::to_string(_MU) + "_dtheta_" + std::to_string(dropTheta) + "_AR_" + std::to_string(AR) + "_bounded_" + std::to_string(hasboundary);
