@@ -1,5 +1,16 @@
 # nestSim
 
+## PLOTS
+
+python plot_data.py packing_fraction mu dtheta=0.00 AR=55 bounded=1
+* change dtheta
+
+packing fraction @ mu=0 as a function of AR. Weird bump at 0/1 AR <-- LOOK
+
+
+
+
+
 ## Notes
 
 * Aspect ratio is really 2x true aspect ratio because it multiplies the  

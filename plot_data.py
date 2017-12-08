@@ -101,6 +101,7 @@ if __name__ == "__main__":
     data_array = [np.genfromtxt(file, delimiter=',')
                   for file in files]
 
+    # #TODO make this work for empty files
 
     # will need to handle data differently for scalar_data
     if datatype == 'scalar_data':
