@@ -268,8 +268,10 @@ std::string savefilename = "savestate.txt";
 std::string loadfilename = "savestate.txt";
 float rad = .03; // rod radius
 
+int simloopcount = 0;
+int simloopmod = 70;
 float AR = 50; // rod aspect ratio
-int nwalls = 100; // number of walls. Should be 1 or 5
+int nwalls = 100; // number of walls. Should be 1 or 5 or 100
 dGeomID *walls; // wall objects
 float bound = rad*AR; //rad*AR/2.0+1.001; // shortest horz distance from walls to origin
 float _MU;
@@ -404,7 +406,7 @@ static void nearCallback (void *data, dGeomID o1, dGeomID o2)
         contact[i].surface.rho = _MU;
         contact[i].surface.mu2 = 0;
         contact[i].surface.bounce = 0.0;
-        contact[i].surface.bounce_vel = 10000000.1;
+        contact[i].surface.bounce_vel = 10000000;
         contact[i].surface.soft_cfm = 0.01;
     }
     if (int numc = dCollide(o1, o2, MAX_CONTACTS, &contact[0].geom,
@@ -534,6 +536,8 @@ void drop(float hm = highest90percentileMidpoint(), float xyang = dRandReal()*2*
     MyObject new_obj;
 
     new_obj.body = dBodyCreate (world);
+
+    dBodySetLinearVel(new_obj.body, 0,0,-1);
 
 
 
@@ -898,6 +902,7 @@ void save_contact_density(){
 
     printf("Saving contact density plot to file...\n");
     saveCSV((contactdensityfilename+parameters+filetypename).c_str(), fields, data, true);
+    printf("Finished saving contact density plot to file...\n");
 
     //printf("Plotting contact density. Simulation paused.\n");
     //system((pythonplotter+contactdensityfilename+parameters+filetypename).c_str());
@@ -1128,6 +1133,15 @@ void drawGeom (dGeomID g, const dReal *pos, const dReal *R, int show_aabb)
 
 static void simLoop (int pause)
 {
+    simloopcount++;
+    if(simloopcount % simloopmod == 0 && num < 300){
+        dropBatch();
+    }
+    if(simloopcount > 4300){
+        save_all();
+        assert(0); // not the most elegant way to leave a program i know.
+    }
+
     dsSetColor (0,0,2);
     dSpaceCollide (space,0,&nearCallback);
     if (!pause) { dWorldQuickStep (world, 0.02); }
@@ -1207,9 +1221,10 @@ int main(int argc, char **argv)
     }
     fprintf(fp, "nest sim started with parameters %f %f %f %d\n",_MU, dropTheta, AR, hasboundary);
 
-    nwalls = hasboundary ? 100 : 1;
+    nwalls = 100;
     walls = (dGeomID *) malloc(sizeof(dGeomID)*nwalls);//[nwalls]
     bound = 1;//AR * rad / 2 + 1;
+    if(!hasboundary){bound = 10000;} // there's some bug with not initializing the walls. so we can just secretly make them really far.
     fprintf(fp, "walls initiated\n");
 
     contactdensityfilename = "outputdata/contact_density";
