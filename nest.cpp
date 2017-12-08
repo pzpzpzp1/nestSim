@@ -276,6 +276,14 @@ float _MU;
 float dropTheta;
 bool hasboundary;
 
+std::string contactdensityfilename;
+std::string massdensityfilename;
+std::string orientationdensityfilename;
+std::string scalarsfilename;
+std::string pythonplotter;
+std::string parameters;
+std::string filetypename;
+
 struct MyFeedback {
     dJointFeedback fb;
     bool first;
@@ -866,16 +874,17 @@ void save_mass_density(){
     fields.push_back("mass_density");
 
     printf("Saving mass density plot to file...\n");
-    saveCSV("outputdata/mass_density.csv", fields, data, true);
+    saveCSV((massdensityfilename+parameters+filetypename).c_str(), fields, data, true);
 
-    printf("Plotting mass density. Simulation paused.\n");
-    system("python plotter/plotter.py outputdata/mass_density.csv");
+    //printf("Plotting mass density. Simulation paused.\n");
+    //system((pythonplotter+massdensityfilename+parameters+filetypename).c_str());
 }
 
 void save_contact_density(){
     if(num==0) {fprintf(fp,"nothing to save. no rods exist.\n"); return;}
 
     std::vector<float> cbh = ContactsByHeight(rad/2.0);
+
     printf("Number of contacts as a function of height: ");
     printFloatVector(cbh); // print to terminal
 
@@ -888,10 +897,10 @@ void save_contact_density(){
     fields.push_back("contacts_by_height");
 
     printf("Saving contact density plot to file...\n");
-    saveCSV("outputdata/contact_density.csv", fields, data, true);
+    saveCSV((contactdensityfilename+parameters+filetypename).c_str(), fields, data, true);
 
-    printf("Plotting contact density. Simulation paused.\n");
-    system("python plotter/plotter.py outputdata/contact_density.csv");
+    //printf("Plotting contact density. Simulation paused.\n");
+    //system((pythonplotter+contactdensityfilename+parameters+filetypename).c_str());
 }
 void save_orientation_density(){
     if(num==0) {fprintf(fp,"nothing to save. no rods exist.\n"); return;}
@@ -907,17 +916,17 @@ void save_orientation_density(){
     std::vector< std::string > fields;
     fields.push_back("orientation_density");
 
-    printf("Saving mass density plot to file...\n");
-    saveCSV("outputdata/orientation_density.csv", fields, data, true);
+    printf("Saving orientation density plot to file...\n");
+    saveCSV((orientationdensityfilename+parameters+filetypename).c_str(), fields, data, true);
 
-    printf("Plotting orientation density. Simulation paused.\n");
-    system("python plotter/plotter.py outputdata/orientation_density.csv");
+    //printf("Plotting orientation density. Simulation paused.\n");
+    //system((pythonplotter+orientationdensityfilename+parameters+filetypename).c_str());
 
 }
 
 void save_scalars(){
     // save packing fraction and stable percentage.
-    FILE * scalarfp = fopen("outputdata/scalar_data.txt","w");
+    FILE * scalarfp = fopen((scalarsfilename+filetypename).c_str(),"w");
     num_stable = 0;
     for (int i = 0; i < num; i++) {
         bool isStable = CheckStable(i);
@@ -929,7 +938,7 @@ void save_scalars(){
     float pf = packingFraction(0);
 
     float stable_perc = ((float)num_stable)/((float)num);
-    fprintf(scalarfp, "%f %f\n", pf, stable_perc);
+    fprintf(scalarfp, "%f, %f\n", pf, stable_perc);
     fclose(scalarfp);
 }
 
@@ -939,7 +948,6 @@ void save_all(){
     save_contact_density();
     save_orientation_density();
     save_scalars();
-
 }
 
 
@@ -1203,6 +1211,16 @@ int main(int argc, char **argv)
     walls = (dGeomID *) malloc(sizeof(dGeomID)*nwalls);//[nwalls]
     bound = 1;//AR * rad / 2 + 1;
     fprintf(fp, "walls initiated\n");
+
+    contactdensityfilename = "outputdata/contact_density";
+    massdensityfilename = "outputdata/mass_density";
+    orientationdensityfilename = "outputdata/orientation_density";
+    scalarsfilename = "outputdata/scalar_data";
+    pythonplotter = "python3 plotter/plotter.py ";
+    filetypename = ".csv";
+    parameters = "_mu_" + std::to_string(_MU) + "_dtheta_" + std::to_string(dropTheta) + "_AR_" + std::to_string(AR) + "_bounded_" + std::to_string(hasboundary);
+
+    std::cout << parameters;
 
     // To check that saveCSV(...) works
 //    std::vector<int> xvals;
