@@ -851,6 +851,97 @@ void LoadState(std::string filename){
 }
 
 
+void save_mass_density(){
+    if(num==0) {fprintf(fp,"nothing to save. no rods exist.\n"); return;}
+    std::vector<float> mass_density = massDensityByHeight(rad / 2);
+    printf("Mass density as a function of height: ");
+    printFloatVector(mass_density); // print to terminal
+
+    // ugh
+    std::vector< std::vector<float> > data;
+    data.push_back(mass_density);
+
+    // only one field
+    std::vector< std::string > fields;
+    fields.push_back("mass_density");
+
+    printf("Saving mass density plot to file...\n");
+    saveCSV("outputdata/mass_density.csv", fields, data, true);
+
+    printf("Plotting mass density. Simulation paused.\n");
+    system("python plotter/plotter.py outputdata/mass_density.csv");
+}
+
+void save_contact_density(){
+    if(num==0) {fprintf(fp,"nothing to save. no rods exist.\n"); return;}
+
+    std::vector<float> cbh = ContactsByHeight(rad/2.0);
+    printf("Number of contacts as a function of height: ");
+    printFloatVector(cbh); // print to terminal
+
+    // ugh
+    std::vector< std::vector<float> > data;
+    data.push_back(cbh);
+
+    // only one field
+    std::vector< std::string > fields;
+    fields.push_back("contacts_by_height");
+
+    printf("Saving contact density plot to file...\n");
+    saveCSV("outputdata/contact_density.csv", fields, data, true);
+
+    printf("Plotting contact density. Simulation paused.\n");
+    system("python plotter/plotter.py outputdata/contact_density.csv");
+}
+void save_orientation_density(){
+    if(num==0) {fprintf(fp,"nothing to save. no rods exist.\n"); return;}
+    std::vector<float> orientation_density = orientationDensityByHeight(rad / 2);
+    printf("Orientation (polar angle) density as a function of height: ");
+    printFloatVector(orientation_density); // print to terminal
+
+    // ugh
+    std::vector< std::vector<float> > data;
+    data.push_back(orientation_density);
+
+    // only one field
+    std::vector< std::string > fields;
+    fields.push_back("orientation_density");
+
+    printf("Saving mass density plot to file...\n");
+    saveCSV("outputdata/orientation_density.csv", fields, data, true);
+
+    printf("Plotting orientation density. Simulation paused.\n");
+    system("python plotter/plotter.py outputdata/orientation_density.csv");
+
+}
+
+void save_scalars(){
+    // save packing fraction and stable percentage.
+    FILE * scalarfp = fopen("outputdata/scalar_data.txt","w");
+    num_stable = 0;
+    for (int i = 0; i < num; i++) {
+        bool isStable = CheckStable(i);
+        if (isStable) {
+            num_stable++;
+        }
+    }
+
+    float pf = packingFraction(0);
+
+    float stable_perc = ((float)num_stable)/((float)num);
+    fprintf(scalarfp, "%f %f\n", pf, stable_perc);
+    fclose(scalarfp);
+}
+
+void save_all(){
+    if(num==0) {fprintf(fp,"nothing to save. no rods exist.\n"); return;}
+    save_mass_density();
+    save_contact_density();
+    save_orientation_density();
+    save_scalars();
+
+}
+
 
 // called when a key pressed
 static void command (int cmd)
@@ -865,65 +956,18 @@ static void command (int cmd)
     }
 
     else if (cmd == 'm') {
-
-        if(num==0) {fprintf(fp,"nothing to save. no rods exist.\n"); return;}
-        std::vector<float> mass_density = massDensityByHeight(rad / 2);
-        printf("Mass density as a function of height: ");
-        printFloatVector(mass_density); // print to terminal
-
-        // ugh
-        std::vector< std::vector<float> > data;
-        data.push_back(mass_density);
-
-        // only one field
-        std::vector< std::string > fields;
-        fields.push_back("mass_density");
-
-        printf("Saving mass density plot to file...\n");
-        saveCSV("plotter/mass_density.csv", fields, data, true);
-
-        printf("Plotting mass density. Simulation paused.\n");
-        system("python plotter/plotter.py plotter/mass_density.csv");
+        save_mass_density();
 
         return;
     }
     else if (cmd == 'o') {
 
-
-        if(num==0) {fprintf(fp,"nothing to save. no rods exist.\n"); return;}
-
-        std::vector<float> cbh = ContactsByHeight(rad/2.0);
-        printf("Number of contacts as a function of height: ");
-        printFloatVector(cbh); // print to terminal
-
-        // ugh
-        std::vector< std::vector<float> > data;
-        data.push_back(cbh);
-
-        // only one field
-        std::vector< std::string > fields;
-        fields.push_back("contacts_by_height");
+        save_contact_density();
+        return;
     }
 
     else if (cmd == 'r') {
-        std::vector<float> orientation_density = orientationDensityByHeight(rad / 2);
-        printf("Orientation (polar angle) density as a function of height: ");
-        printFloatVector(orientation_density); // print to terminal
-
-        // ugh
-        std::vector< std::vector<float> > data;
-        data.push_back(orientation_density);
-
-        // only one field
-        std::vector< std::string > fields;
-        fields.push_back("orientation_density");
-
-        printf("Saving mass density plot to file...\n");
-        saveCSV("plotter/orientation_density.csv", fields, data, true);
-
-        printf("Plotting orientation density. Simulation paused.\n");
-        system("python plotter/plotter.py plotter/orientation_density.csv");
-        
+        save_orientation_density();
         return;
     }
       
