@@ -264,10 +264,14 @@ FILE * fp;
 std::string savefilename = "savestate.txt";
 std::string loadfilename = "savestate.txt";
 float rad = .03; // rod radius
-int AR = 50; // rod aspect ratio
-const int nwalls = 1; // number of walls. Should be 1 or 5
-dGeomID walls[nwalls]; // wall objects
-float bound = 1.2; //rad*AR/2.0+1.001; // shortest horz distance from walls to origin
+
+float AR = 50; // rod aspect ratio
+int nwalls = 100; // number of walls. Should be 1 or 5
+dGeomID *walls; // wall objects
+float bound = rad*AR; //rad*AR/2.0+1.001; // shortest horz distance from walls to origin
+float _MU;
+float dropTheta;
+bool hasboundary;
 
 struct MyFeedback {
     dJointFeedback fb;
@@ -384,11 +388,12 @@ static void nearCallback (void *data, dGeomID o1, dGeomID o2)
 
     dContact contact[MAX_CONTACTS];   // up to MAX_CONTACTS contacts per box-box
     for (i=0; i<MAX_CONTACTS; i++) {
-        contact[i].surface.mode = dContactBounce | dContactSoftCFM;
-        contact[i].surface.mu = dInfinity;
+        contact[i].surface.mode = dContactSoftCFM;
+        contact[i].surface.mu = _MU;//dInfinity;
+        contact[i].surface.rho = _MU;
         contact[i].surface.mu2 = 0;
-        contact[i].surface.bounce = 0.1;
-        contact[i].surface.bounce_vel = 0.1;
+        contact[i].surface.bounce = 0.0;
+        contact[i].surface.bounce_vel = 10000000.1;
         contact[i].surface.soft_cfm = 0.01;
     }
     if (int numc = dCollide(o1, o2, MAX_CONTACTS, &contact[0].geom,
@@ -487,7 +492,8 @@ bool collidesWithWall(dGeomID g0){
 // copy-pasted code
 #include "pile.hpp"
 
-void drop(float hm = highest90percentileMidpoint()) {
+
+void drop(float hm = highest90percentileMidpoint(), float xyang = dRandReal()*2*M_PI) {
     size_t i;
     int j,k;
     dMass m;
@@ -547,9 +553,11 @@ void drop(float hm = highest90percentileMidpoint()) {
                           dRandReal()*2-1,dRandReal()*2-1, hm + rad*AR);
 
         // all orientations uniformly
-        float xy_angle = dRandReal() * 2 * M_PI;
-        float h_angle = dRandReal() * 2 * M_PI;
+        float xy_angle = xyang + dRandReal() * M_PI / 6 - M_PI / 12;
+        float h_angle = M_PI/2;// dRandReal() * 2 * M_PI;
         float r_angle = dRandReal() * 2 * M_PI;
+
+        r_angle = dropTheta + dRandReal() * M_PI/6-M_PI/12;
 
         //dRFromAxisAndAngle(R, 1, 0, 0, 0.01);
         dRFromAxisAndAngle (R, sin(xy_angle)*sin(h_angle), cos(xy_angle)*
@@ -559,6 +567,13 @@ void drop(float hm = highest90percentileMidpoint()) {
     } while(collidesWithWall(new_obj.geom));
 
     return;
+}
+
+void dropBatch()
+{
+    float hm = highestMidpoint();
+    float xyang = dRandReal()*2*M_PI;
+    for (int j = 0; j < 5; j++) { drop(hm, xyang); }
 }
 
 bool CheckStable(int rodInd) {
@@ -963,8 +978,7 @@ static void command (int cmd)
 
     // Drop lots of capsules
     else if (cmd == 'x') {
-        float hm = highestMidpoint();
-        for (j = 0; j < 50; j++) { drop(hm); }
+        dropBatch();
     }
 
     // toggle immobility
@@ -1114,8 +1128,35 @@ static void simLoop (int pause)
 }
 
 
-int main (int argc, char **argv)
+int main(int argc, char **argv)
 {
+
+    fp = stdout;
+    if(argc == 1)
+    {
+        _MU = 1000000;
+        dropTheta = M_PI/2; // 1.57
+        AR = 50;
+        hasboundary = true;
+    }
+    else if(argc == 5){
+        _MU = atof(argv[1]);
+        dropTheta = atof(argv[2]);
+        AR = atof(argv[3]);
+        hasboundary = atoi(argv[4]) != 0;
+    }
+    else
+    {
+        fprintf(fp, "need 4 arguments! friction, drop angle, AR, boundary\n");
+        return 0;
+    }
+    fprintf(fp, "nest sim started with parameters %f %f %f %d\n",_MU, dropTheta, AR, hasboundary);
+
+    nwalls = hasboundary ? 100 : 1;
+    walls = (dGeomID *) malloc(sizeof(dGeomID)*nwalls);//[nwalls]
+    bound = 1;//AR * rad / 2 + 1;
+    fprintf(fp, "walls initiated\n");
+
     // To check that saveCSV(...) works
 //    std::vector<int> xvals;
 //    xvals.push_back(0);
@@ -1143,8 +1184,7 @@ int main (int argc, char **argv)
 
     // init global vars /***/
     maxNumContactsSimulated = 0;
-    fp = stdout;
-    AR = 50;
+
 
     // setup pointers to drawstuff callback functions
     dsFunctions fn;
@@ -1200,6 +1240,7 @@ int main (int argc, char **argv)
         walls[4]=wall_W;
     }
     else if (nwalls > 5) {
+        fprintf(fp, "making many walls\n");
         // put in like a ton of walls
         float angle_step = 2 * M_PI / (nwalls - 1.);
         float angle = 0;
