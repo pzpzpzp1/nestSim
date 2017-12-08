@@ -10,10 +10,10 @@
 
 void printFloatVector(std::vector<float> vec) {
     printf("[");
-    for (int i = 0; i < vec.size() - 1; i++) {
+    for (int i = 0; i < vec.size(); i++) {
         printf("%f, ", vec[i]);
     }
-    printf("%f]\n", vec[vec.size() - 1]);
+    printf("]\n");
 }
 
 
@@ -81,7 +81,7 @@ float cot(float theta) {
 // a = semi-major axis of ellipse = rad / cos(theta)
 // b = semi-minor axis of ellipse
 float ellipseIntegral(float x, float a, float b) {
-    assert(std::abs(x) <= a);
+    // assert(std::abs(x) <= a);
 
     float res = 0.;
 
@@ -92,7 +92,7 @@ float ellipseIntegral(float x, float a, float b) {
         res -= b * (x * sqrt(1 - pow(x / a, 2)) + a * asin(x / a));
     }
 
-    assert(!isnan(res));
+    // assert(!isnan(res));
 
 //    printf("\t\t(x, a, b, res): (%f, %f, %f, %f)\n", x, a, b, res);
 
@@ -125,10 +125,13 @@ std::vector<float> ContactsByHeight(float dh)
           }
         }
     }
+
     std::sort(heights.begin(), heights.end(), orderbyfloat);
 
     // no contacts to display. all 0
-    if(heights.size()==0){return heightsByDh;}
+    if(heights.size()==0){
+        return heightsByDh;
+    }
 
     // allocate and count how many heights in each dh bin
     float msize = heights[heights.size()-1];
@@ -176,7 +179,7 @@ std::vector<float> massDensityByHeight(float dh) {
         std::vector<float> pos = position(i);
         std::vector<float> angles = orientationAngles(i);
 
-        if (isnan(angles[0])) {
+        if (std::isnan(angles[0])) {
             if (err) { throw std::runtime_error("NaN angle encountered."); }
             continue;
         }
@@ -389,7 +392,7 @@ std::vector<float> massDensityByHeight(float dh) {
                 continue;
             }
 
-            if (isnan(area)) {
+            if (std::isnan(area)) {
                 if (err) { throw std::runtime_error("NaN area encountered."); }
                 break;
             }
@@ -448,7 +451,7 @@ std::vector<float> orientationDensityByHeight(float dh) {
         std::vector<float> pos = position(i);
         std::vector<float> angles = orientationAngles(i);
 
-        if (isnan(angles[0])) {
+        if (std::isnan(angles[0])) {
             if (err) { throw std::runtime_error("NaN angle encountered."); }
             continue;
         }
@@ -663,7 +666,7 @@ std::vector<float> orientationDensityByHeight(float dh) {
                 continue;
             }
 
-            if (isnan(area)) {
+            if (std::isnan(area)) {
                 if (err) { throw std::runtime_error("NaN area encountered."); }
                 break;
             }
@@ -683,7 +686,7 @@ std::vector<float> orientationDensityByHeight(float dh) {
     for (int i = 0; i < nslices; i++) {
         // density[i] /= slice_area;
         theta[i] /= density[i];
-        assert(0 <= theta[i] && theta[i] <= M_PI / 2);
+        if (err) { assert(0 <= theta[i] && theta[i] <= M_PI / 2); }
     }
     
     return theta;
