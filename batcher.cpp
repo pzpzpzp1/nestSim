@@ -23,20 +23,24 @@ int main(void) {
 
     char buffer[1000];
 
-    float friction[9]   = { 0, .05, .1, .15,.2,.25,.3,.35,.4 };
-    float dropangle[1]  = { //0.,
-                            1. * M_PI / 8.//,
-                            //2. * M_PI / 8.,
-                            //3. * M_PI / 8.,
-                            //4. * M_PI / 8.,
+    float friction[1]   = { .64 };
+    float dropangle[9]  = { 0.,
+                            1. * M_PI / 16.,
+                            2. * M_PI / 16.,
+                            3. * M_PI / 16.,
+                            4. * M_PI / 16.,
+                            5. * M_PI / 16.,
+                            6. * M_PI / 16.,
+                            7. * M_PI / 16.,
+                            8. * M_PI / 16.,
                           };
-    float AR[1]         = { 55 };
-    int boundary[1]     = { 1 };
+    float AR[3]         = { 8,25,55 };
+    int boundary[1]     = { 0 };
 
 
-    for (int f = 0; f < 9; f++) {
-        for (int d = 0; d < 1; d++) {
-            for (int a = 0; a < 1; a++) {
+    for (int f = 0; f < 1; f++) {
+        for (int d = 0; d < 9; d++) {
+            for (int a = 0; a < 6; a++) {
                 for (int b = 0; b < 1; b++) {
 
                     printf("(friction, dropangle, AR, boundary) = (%f, %f, %f, %d)\n",
